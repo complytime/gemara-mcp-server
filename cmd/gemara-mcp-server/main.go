@@ -1,39 +1,25 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/complytime/gemara-mcp-server/mcp"
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	"github.com/complytime/gemara-mcp-server/version"
-)
-
-var (
-	configFile  string
-	transport   string
-	logFilePath string
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "gemara-mcp-server",
 	Short: "Gemara CUE MCP Server",
-	Long:  "A Model Context Protocol server for Gemara (GRC Engineering Model for Automated Risk Assessment) with CUE support",
+	Long:  "A Model Context Protocol server for Gemara (GRC Engineering Model for Automated Risk Assessment)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := mcp.Config{
-			Version:     version.GetVersion(),
-			LogFilePath: logFilePath,
+		cfg := mcp.ServerConfig{
+			Version: version.GetVersion(),
 		}
-
-		server, err := mcp.NewServer(cfg)
-		if err != nil {
-			return fmt.Errorf("failed to create server: %w", err)
-		}
-
+		server := mcp.NewServer(&cfg)
 		return server.Start()
 	},
 }
@@ -48,20 +34,17 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-
-	rootCmd.Flags().StringVar(&configFile, "config", "", "path to configuration file (not currently used)")
-	rootCmd.Flags().StringVar(&transport, "transport", "stdio", "transport mode (stdio/sse) - only stdio is currently supported")
-	rootCmd.Flags().StringVar(&logFilePath, "log-file", "", "path to log file (default: stderr)")
-
-	// Bridge glog flags with pflag for cobra compatibility
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	
+	// Set up structured logging with slog
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
 }
 
 func main() {
-	defer glog.Flush()
-
 	if err := rootCmd.Execute(); err != nil {
-		glog.Errorf("Command execution failed: %v", err)
+		slog.Error("Command execution failed", "error", err)
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

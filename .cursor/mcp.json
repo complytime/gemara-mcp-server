@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "gemara-mcp-server": {
+      "command": "/absolute/path/to/gemara-mcp-server",
+      "args": [],
+      "env": {}
+    }
+  }
+}
