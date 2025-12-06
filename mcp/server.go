@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 
+	"github.com/complytime/gemara-mcp-server/tools"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -43,6 +44,10 @@ func NewServer(cfg *ServerConfig) *Server {
 		mcp.WithPromptDescription("Provides system-level context about Gemara (GRC Engineering Model for Automated Risk Assessment)"),
 	)
 	s.mcpServer.AddPrompt(gemaraPrompt, s.handleGemaraSystemPrompt)
+
+	// Register Gemara Authoring Tools
+	authoringTools := tools.NewGemaraAuthoringTools()
+	authoringTools.Register(mcpServer)
 
 	return s
 }

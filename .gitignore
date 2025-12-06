@@ -31,3 +31,7 @@ go.work.sum
 
 # env file
 .env
+
+# generate artifacts
+artifacts/
+bin/*

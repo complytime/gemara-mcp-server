@@ -4,12 +4,7 @@
 
 ### 1. Build the server
 ```bash
-go build -o gemara-mcp-server ./cmd/gemara-mcp-server
-```
-
-### 2. Run automated tests
-```bash
-python3 test_mcp_server.py --build
+go build -o ./bin/gemara-mcp-server ./cmd/gemara-mcp-server
 ```
 
 This will build and test the server automatically.
@@ -21,7 +16,7 @@ This will build and test the server automatically.
    {
      "mcpServers": {
        "gemara-mcp-server": {
-         "command": "/home/jpower/Documents/upstream-repos/gemara-mcp-server/gemara-mcp-server",
+         "command": "./bin/gemara-mcp-server",
          "args": [],
          "env": {}
        }
