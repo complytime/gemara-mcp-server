@@ -3,6 +3,7 @@ package tools
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,8 +84,12 @@ func (g *GemaraAuthoringTools) getArtifactsDir() string {
 	if err == nil {
 		artifactsPath := filepath.Join(cwd, "artifacts")
 		if _, err := os.Stat(artifactsPath); err == nil {
+			slog.Debug("Found artifacts directory", "path", artifactsPath, "source", "working_dir")
 			return artifactsPath
 		}
+		slog.Debug("Artifacts directory not found in working directory", "path", artifactsPath, "error", err)
+	} else {
+		slog.Debug("Failed to get working directory", "error", err)
 	}
 
 	// Try executable directory
@@ -92,12 +97,19 @@ func (g *GemaraAuthoringTools) getArtifactsDir() string {
 		exeDir := filepath.Dir(exe)
 		artifactsPath := filepath.Join(exeDir, "artifacts")
 		if _, err := os.Stat(artifactsPath); err == nil {
+			slog.Debug("Found artifacts directory", "path", artifactsPath, "source", "executable_dir")
 			return artifactsPath
 		}
+		slog.Debug("Artifacts directory not found in executable directory", "path", artifactsPath, "error", err)
+	} else {
+		slog.Debug("Failed to get executable path", "error", err)
 	}
 
 	// Fallback: return relative path (will be resolved relative to cwd)
-	return "artifacts"
+	// Storage will create the directory if it doesn't exist
+	fallbackPath := "artifacts"
+	slog.Info("Using fallback artifacts path", "path", fallbackPath, "cwd", cwd)
+	return fallbackPath
 }
 
 // containsIgnoreCase performs case-insensitive substring search

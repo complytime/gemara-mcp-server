@@ -29,14 +29,14 @@ Gemara provides a structured framework and tooling for:
 
 Each layer in the model builds upon the lower layer, though in higher-level use cases you may find examples where multiple lower layers are brought into a higher level together. The model enables interoperability between different tools and systems. For example, a Layer 2 artifact from Tool A can communicate with Tool B which produces a corresponding Layer 4 artifact, enabling seamless integration across the GRC toolchain.
 
-| Layer | Name | Description |
-|-------|------|-------------|
-| 1 | Guidance | High-level guidance on cybersecurity measures |
-| 2 | Controls | Technology-specific, threat-informed security controls |
-| 3 | Policy | Risk-informed guidance tailored to an organization |
-| 4 | Evaluation | Inspection of code, configurations, and deployments |
-| 5 | Enforcement | Prevention or remediation based on assessment findings |
-| 6 | Audit | Review of organizational policy and conformance |
+| Layer | Name        | Description                                            |
+|-------|-------------|--------------------------------------------------------|
+| 1     | Guidance    | High-level guidance on cybersecurity measures          |
+| 2     | Controls    | Technology-specific, threat-informed security controls |
+| 3     | Policy      | Risk-informed guidance tailored to an organization     |
+| 4     | Evaluation  | Inspection of code, configurations, and deployments    |
+| 5     | Enforcement | Prevention or remediation based on assessment findings |
+| 6     | Audit       | Review of organizational policy and conformance        |
 
 ### Layer 1: Guidance
 
@@ -173,6 +173,8 @@ Some Gemara use cases include:
 - **[Open Source Project Security Baseline](https://baseline.openssf.org/)** (Layer 2)
 - **[Privateer](https://github.com/privateerproj/privateer)** (Layer 4)
   - Example: [OSPS Baseline Privateer Plugin](https://github.com/revanite-io/pvtr-github-repo)
+
+The website URL is https://gemara.openssf.org
 
 ## Contributing
 

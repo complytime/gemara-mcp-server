@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,6 +24,7 @@ type ValidationResult struct {
 func (g *GemaraAuthoringTools) handleValidateGemaraYAML(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	yamlContent := request.GetString("yaml_content", "")
 	layer := request.GetInt("layer", 0)
+	outputFormat := request.GetString("output_format", "text")
 
 	if yamlContent == "" {
 		return mcp.NewToolResultError("yaml_content is required"), nil
@@ -35,6 +37,27 @@ func (g *GemaraAuthoringTools) handleValidateGemaraYAML(ctx context.Context, req
 	// Perform CUE validation
 	validationResult := g.PerformCUEValidation(yamlContent, layer)
 
+	// Handle JSON format output
+	if outputFormat == "json" {
+		jsonResult := map[string]interface{}{
+			"valid":  validationResult.Valid,
+			"layer":  layer,
+			"error":  validationResult.Error,
+			"errors": validationResult.Errors,
+			"schema": map[string]string{
+				"url":        fmt.Sprintf("https://github.com/ossf/gemara/blob/main/schemas/layer-%d.cue", layer),
+				"repository": "https://github.com/ossf/gemara/tree/main/schemas",
+			},
+		}
+		jsonBytes, err := json.MarshalIndent(jsonResult, "", "  ")
+		if err != nil {
+			return mcp.NewToolResultErrorf("failed to marshal JSON: %v", err), nil
+		}
+		// Convert bytes to string - json.Marshal returns []byte
+		return mcp.NewToolResultText(string(jsonBytes)), nil
+	}
+
+	// Default: text format
 	// Build comprehensive validation result
 	result := fmt.Sprintf(`# Gemara Layer %d Validation Report
 

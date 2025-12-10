@@ -1,9 +1,7 @@
 {
   "mcpServers": {
     "gemara-mcp-server": {
-      "command": "./bin/gemara-mcp-server",
-      "args": [],
-      "env": {}
+      "url": "http://localhost:8080/mcp"
     }
   }
 }

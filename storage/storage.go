@@ -116,7 +116,6 @@ func (s *ArtifactStorage) loadIndex() error {
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -258,6 +257,12 @@ func (s *ArtifactStorage) GetLayerDir(layer int) string {
 	return filepath.Join(s.baseDir, fmt.Sprintf("layer%d", layer))
 }
 
+// Rescan rescans the storage directories and rebuilds the index
+// This is useful to discover new artifacts that may have been added to the storage directory
+func (s *ArtifactStorage) Rescan() error {
+	return s.loadIndex()
+}
+
 // StoreRawYAML stores raw YAML content to disk and updates the index
 // This is the preferred method for storing artifacts as it preserves all YAML content without data loss
 func (s *ArtifactStorage) StoreRawYAML(layer int, yamlContent string) (string, error) {
@@ -302,7 +307,8 @@ func (s *ArtifactStorage) StoreRawYAML(layer int, yamlContent string) (string, e
 
 	// Write raw YAML to disk
 	if err := os.WriteFile(absPath, []byte(yamlContent), 0644); err != nil {
-		return "", fmt.Errorf("failed to write YAML to disk: %w", err)
+		return "", fmt.Errorf("failed to write YAML to disk at %s: %w (current uid: %d, gid: %d, directory: %s)",
+			absPath, err, os.Getuid(), os.Getgid(), layerDir)
 	}
 
 	// Update index

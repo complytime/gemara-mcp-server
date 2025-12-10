@@ -1,0 +1,28 @@
+.dockerignore
+
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.vscode
+.idea
+.cursor
+
+# Build artifacts and documentation
+**/*.yml
+**/*.yaml
+**/*.md
+**/*_test.go
+
+# Environment
+.env
+
+# Artifacts
+artifacts/
+
+
+
+
+

@@ -9,69 +9,80 @@ import (
 
 func TestNewServer(t *testing.T) {
 	cfg := &ServerConfig{
-		Version: "test-version",
+		Version:   "test-version",
+		Transport: "stdio",
 	}
-	
-	server := NewServer(cfg)
-	
+
+	server, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("NewServer returned error: %v", err)
+	}
+
 	if server == nil {
 		t.Fatal("NewServer returned nil")
 	}
-	
+
 	if server.config == nil {
 		t.Error("Server config is nil")
 	}
-	
+
 	if server.config.Version != "test-version" {
 		t.Errorf("Expected version 'test-version', got '%s'", server.config.Version)
 	}
-	
+
 	if server.mcpServer == nil {
 		t.Error("MCP server is nil")
 	}
 }
 
-func TestHandleGemaraSystemPrompt(t *testing.T) {
+func TestHandleGemaraContextResource(t *testing.T) {
 	cfg := &ServerConfig{
-		Version: "test-version",
+		Version:   "test-version",
+		Transport: "stdio",
 	}
-	server := NewServer(cfg)
-	
+	server, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("NewServer returned error: %v", err)
+	}
+
 	ctx := context.Background()
-	request := mcp.GetPromptRequest{
-		Params: mcp.GetPromptParams{
-			Name: "gemara-system-prompt",
+	request := mcp.ReadResourceRequest{
+		Params: mcp.ReadResourceParams{
+			URI: "gemara://context/about",
 		},
 	}
-	
-	result, err := server.handleGemaraSystemPrompt(ctx, request)
-	
+
+	contents, err := server.handleGemaraContextResource(ctx, request)
+
 	if err != nil {
-		t.Fatalf("handleGemaraSystemPrompt returned error: %v", err)
+		t.Fatalf("handleGemaraContextResource returned error: %v", err)
 	}
-	
-	if result == nil {
-		t.Fatal("handleGemaraSystemPrompt returned nil result")
+
+	if contents == nil {
+		t.Fatal("handleGemaraContextResource returned nil contents")
 	}
-	
-	// Verify the result structure
-	if len(result.Messages) == 0 {
-		t.Error("Expected at least one message in the prompt result")
+
+	if len(contents) == 0 {
+		t.Error("Expected at least one content item in the resource result")
 	}
-	
+
 	// Check that gemaraContext is embedded
 	if gemaraContext == "" {
 		t.Error("gemaraContext should not be empty")
 	}
-	
-	// Verify first message contains the context
-	if len(result.Messages) > 0 {
-		msg := result.Messages[0]
-		if msg.Role != mcp.RoleUser {
-			t.Errorf("Expected role '%s', got '%s'", mcp.RoleUser, msg.Role)
+
+	// Verify first content item contains the context
+	if len(contents) > 0 {
+		content := contents[0]
+		if textContent, ok := content.(*mcp.TextResourceContents); ok {
+			if textContent.Text == "" {
+				t.Error("Expected non-empty text content")
+			}
+			if textContent.MIMEType != "text/markdown" {
+				t.Errorf("Expected MIME type 'text/markdown', got '%s'", textContent.MIMEType)
+			}
+		} else {
+			t.Error("Expected TextResourceContents type")
 		}
 	}
 }
-
-// Note: Testing ServeStdio is difficult without actual stdio communication
-// Integration tests using the Python script are recommended for full E2E testing

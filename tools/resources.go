@@ -114,6 +114,36 @@ func (g *GemaraAuthoringTools) handleLayer4SchemaResource(ctx context.Context, r
 	}, nil
 }
 
+// handleLayer5SchemaResource returns the layer-5.cue schema content
+func (g *GemaraAuthoringTools) handleLayer5SchemaResource(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+	schemaContent, err := g.getCUESchema(5)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load layer 5 schema: %w", err)
+	}
+	return []mcp.ResourceContents{
+		&mcp.TextResourceContents{
+			URI:      request.Params.URI,
+			MIMEType: "text/x-cue",
+			Text:     schemaContent,
+		},
+	}, nil
+}
+
+// handleLayer6SchemaResource returns the layer-6.cue schema content
+func (g *GemaraAuthoringTools) handleLayer6SchemaResource(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+	schemaContent, err := g.getCUESchema(6)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load layer 6 schema: %w", err)
+	}
+	return []mcp.ResourceContents{
+		&mcp.TextResourceContents{
+			URI:      request.Params.URI,
+			MIMEType: "text/x-cue",
+			Text:     schemaContent,
+		},
+	}, nil
+}
+
 // getSchemaResourceContent retrieves schema content via resource URI
 // This provides a consistent way for tools to access schemas through the resource system
 func (g *GemaraAuthoringTools) getSchemaResourceContent(uri string) (string, error) {
@@ -135,6 +165,10 @@ func (g *GemaraAuthoringTools) getSchemaResourceContent(uri string) (string, err
 		handler = g.handleLayer3SchemaResource
 	case "gemara://schema/layer/4":
 		handler = g.handleLayer4SchemaResource
+	case "gemara://schema/layer/5":
+		handler = g.handleLayer5SchemaResource
+	case "gemara://schema/layer/6":
+		handler = g.handleLayer6SchemaResource
 	default:
 		return "", fmt.Errorf("unknown schema resource URI: %s", uri)
 	}
@@ -253,8 +287,8 @@ func (g *GemaraAuthoringTools) getCommonCUESchema(schemaName string) (string, er
 func (g *GemaraAuthoringTools) handleGetLayerSchemaInfo(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	layer := request.GetInt("layer", 0)
 
-	if layer < 1 || layer > 4 {
-		return mcp.NewToolResultErrorf("layer must be between 1 and 4, got %d", layer), nil
+	if layer < 1 || layer > 6 {
+		return mcp.NewToolResultErrorf("layer must be between 1 and 6, got %d", layer), nil
 	}
 
 	var info string
@@ -322,6 +356,38 @@ Key Fields:
 Schema Location: https://github.com/ossf/gemara/blob/main/schemas/layer-4.cue
 
 Note: Evaluations may be built based on outputs from layers 2 or 3.`
+	case 5:
+		info = `Layer 5: Enforcement Schema Information
+
+Purpose: Prevention or remediation based on assessment findings.
+
+Key Fields:
+- enforcement_id: Unique identifier for the enforcement action (required)
+- name: Name of the enforcement action (required)
+- description: Description of the enforcement action (optional)
+- layer3_policies: Array of Layer 3 policy IDs this enforcement is guided by (optional)
+- layer4_evaluations: Array of Layer 4 evaluation IDs this enforcement is based on (optional)
+- action_type: Type of enforcement - prevention or remediation (optional)
+
+Schema Location: https://github.com/ossf/gemara/blob/main/schemas/layer-5.cue
+
+Note: Enforcement actions should be guided by Layer 3 policies and based on assessment findings from Layer 4 evaluations. This layer ensures compliance with policy when evidence of noncompliance is found.`
+	case 6:
+		info = `Layer 6: Audit Schema Information
+
+Purpose: Review of organizational policy and conformance.
+
+Key Fields:
+- audit_id: Unique identifier for the audit (required)
+- name: Name of the audit (required)
+- description: Description of what is being audited (optional)
+- organization: Organization being audited (optional)
+- layer_references: References to artifacts from lower layers (1-5) being reviewed (optional)
+- auditor_type: Type of auditor - internal or external (optional)
+
+Schema Location: https://github.com/ossf/gemara/blob/main/schemas/layer-6.cue
+
+Note: Audits consider information from all of the lower layers. These activities are typically performed by internal or external auditors to ensure that the organization has designed and enforced effective policies based on the organization's requirements.`
 	}
 
 	return mcp.NewToolResultText(info), nil
