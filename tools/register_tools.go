@@ -31,7 +31,6 @@ func (g *GemaraAuthoringTools) registerTools() []server.ServerTool {
 	// Validation and Utility Tools
 	tools = append(tools, g.newValidateGemaraYAMLTool())
 	tools = append(tools, g.newFindApplicableArtifactsTool())
-	tools = append(tools, g.newGetLayerSchemaInfoTool())
 
 	// Export Tools
 	tools = append(tools, g.newExportLayer1ToOSCALTool())
@@ -233,17 +232,6 @@ func (g *GemaraAuthoringTools) newFindApplicableArtifactsTool() server.ServerToo
 			mcp.WithString("output_format", mcp.Description("Output format: 'yaml' (default) or 'json'.")),
 		),
 		Handler: g.handleFindApplicableArtifacts,
-	}
-}
-
-func (g *GemaraAuthoringTools) newGetLayerSchemaInfoTool() server.ServerTool {
-	return server.ServerTool{
-		Tool: mcp.NewTool(
-			"get_layer_schema_info",
-			mcp.WithDescription("Get information about a Gemara layer schema, including key fields, purpose, and schema location. Useful for understanding what fields are required when creating artifacts."),
-			mcp.WithNumber("layer", mcp.Description("Layer number (1-6) to get schema information for."), mcp.Required()),
-		),
-		Handler: g.handleGetLayerSchemaInfo,
 	}
 }
 
