@@ -4,21 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/load"
+	"cuelang.org/go/encoding/yaml"
 	"github.com/mark3labs/mcp-go/mcp"
 )
-
-// ValidationResult holds the result of CUE validation
-type ValidationResult struct {
-	Valid  bool
-	Error  string
-	Errors []string
-}
 
 // handleValidateGemaraYAML validates YAML content against a layer schema using CUE
 func (g *GemaraAuthoringTools) handleValidateGemaraYAML(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -36,20 +28,21 @@ func (g *GemaraAuthoringTools) handleValidateGemaraYAML(ctx context.Context, req
 
 	// Perform CUE validation
 	validationResult := g.PerformCUEValidation(yamlContent, layer)
+	report := ValidationReport{
+		ValidationResult: validationResult,
+		Layer:            layer,
+		Schema: struct {
+			URL        string `json:"url"`
+			Repository string `json:"repository"`
+		}{
+			URL:        fmt.Sprintf("https://github.com/ossf/gemara/blob/main/schemas/layer-%d.cue", layer),
+			Repository: "https://github.com/ossf/gemara/tree/main/schemas",
+		},
+	}
 
 	// Handle JSON format output
 	if outputFormat == "json" {
-		jsonResult := map[string]interface{}{
-			"valid":  validationResult.Valid,
-			"layer":  layer,
-			"error":  validationResult.Error,
-			"errors": validationResult.Errors,
-			"schema": map[string]string{
-				"url":        fmt.Sprintf("https://github.com/ossf/gemara/blob/main/schemas/layer-%d.cue", layer),
-				"repository": "https://github.com/ossf/gemara/tree/main/schemas",
-			},
-		}
-		jsonBytes, err := json.MarshalIndent(jsonResult, "", "  ")
+		jsonBytes, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			return mcp.NewToolResultErrorf("failed to marshal JSON: %v", err), nil
 		}
@@ -57,50 +50,7 @@ func (g *GemaraAuthoringTools) handleValidateGemaraYAML(ctx context.Context, req
 		return mcp.NewToolResultText(string(jsonBytes)), nil
 	}
 
-	// Default: text format
-	// Build comprehensive validation result
-	result := fmt.Sprintf(`# Gemara Layer %d Validation Report
-
-## CUE Schema Validation
-`, layer)
-
-	if validationResult.Valid {
-		result += "✅ CUE validation PASSED\n\n"
-		result += fmt.Sprintf("The YAML content is valid according to the Layer %d CUE schema.\n\n", layer)
-	} else {
-		result += "❌ CUE validation FAILED\n\n"
-		if validationResult.Error != "" {
-			result += fmt.Sprintf("**Validation Error:**\n```\n%s\n```\n\n", validationResult.Error)
-		}
-		if len(validationResult.Errors) > 0 {
-			result += "**Detailed Errors:**\n"
-			for i, err := range validationResult.Errors {
-				result += fmt.Sprintf("  %d. %s\n", i+1, err)
-			}
-			result += "\n"
-		}
-	}
-
-	result += fmt.Sprintf("## Schema Information\n\n")
-	result += fmt.Sprintf("- **Schema URL**: https://github.com/ossf/gemara/blob/main/schemas/layer-%d.cue\n", layer)
-	result += fmt.Sprintf("- **Schema Repository**: https://github.com/ossf/gemara/tree/main/schemas\n\n")
-
-	if !validationResult.Valid {
-		result += fmt.Sprintf("## Your YAML Content\n\n")
-		result += fmt.Sprintf("```yaml\n")
-		result += fmt.Sprintf("%s\n", yamlContent)
-		result += fmt.Sprintf("```\n\n")
-
-		result += fmt.Sprintf("## Next Steps\n\n")
-		result += fmt.Sprintf("1. Review the validation errors above\n")
-		result += fmt.Sprintf("2. Check the suggestions section for common fixes\n")
-		result += fmt.Sprintf("3. Ensure all required fields are present (use `get_layer_schema_info` with layer=%d)\n", layer)
-		result += fmt.Sprintf("4. Verify field types match the schema requirements\n")
-		result += fmt.Sprintf("5. Check that references use valid IDs (use `validate_artifact_references`)\n")
-		result += fmt.Sprintf("6. Review examples in the `create-layer%d` prompt\n\n", layer)
-	}
-
-	return mcp.NewToolResultText(result), nil
+	return mcp.NewToolResultText(report.ToText(yamlContent)), nil
 }
 
 // PerformCUEValidation performs CUE schema validation on YAML content
@@ -111,43 +61,31 @@ func (g *GemaraAuthoringTools) PerformCUEValidation(yamlContent string, layer in
 		Errors: []string{},
 	}
 
-	// Create a temporary directory for schema and data files
-	tmpDir, err := os.MkdirTemp("", "gemara-validation-*")
+	const (
+		base     = "gemara://schema/common/base"
+		metadata = "gemara://schema/common/metadata"
+		mapping  = "gemara://schema/common/mapping"
+	)
+
+	baseSchemaContent, err := g.getSchemaResourceContent(base)
 	if err != nil {
 		result.Valid = false
-		result.Error = fmt.Sprintf("Failed to create temporary directory: %v", err)
+		result.Error = fmt.Sprintf("failed to load schema resource %s: %v", base, err)
 		return result
 	}
-	defer os.RemoveAll(tmpDir)
 
-	// Load schemas using resource system (ensures consistency with MCP resources)
-	// CUE requires file paths, so we write the schema content to temporary files
-	commonSchemas := []struct {
-		name     string
-		resource string
-	}{
-		{"base.cue", "gemara://schema/common/base"},
-		{"metadata.cue", "gemara://schema/common/metadata"},
-		{"mapping.cue", "gemara://schema/common/mapping"},
+	metadataSchemaContent, err := g.getSchemaResourceContent(metadata)
+	if err != nil {
+		result.Valid = false
+		result.Error = fmt.Sprintf("failed to load schema resource %s: %v", metadata, err)
+		return result
 	}
-	schemaFiles := make([]string, 0, len(commonSchemas)+1)
 
-	// Load common schema files using resource system
-	for _, schema := range commonSchemas {
-		schemaContent, err := g.getSchemaResourceContent(schema.resource)
-		if err != nil {
-			result.Valid = false
-			result.Error = fmt.Sprintf("Failed to load schema resource %s: %v", schema.resource, err)
-			return result
-		}
-
-		schemaPath := filepath.Join(tmpDir, schema.name)
-		if err := os.WriteFile(schemaPath, []byte(schemaContent), 0644); err != nil {
-			result.Valid = false
-			result.Error = fmt.Sprintf("Failed to write schema file %s: %v", schema.name, err)
-			return result
-		}
-		schemaFiles = append(schemaFiles, schemaPath)
+	mappingSchemaContent, err := g.getSchemaResourceContent(mapping)
+	if err != nil {
+		result.Valid = false
+		result.Error = fmt.Sprintf("Failed to load schema resource %s: %v", mapping, err)
+		return result
 	}
 
 	// Load layer-specific schema using resource system
@@ -165,89 +103,151 @@ func (g *GemaraAuthoringTools) PerformCUEValidation(yamlContent string, layer in
 		return result
 	}
 
-	layerSchemaPath := filepath.Join(tmpDir, fmt.Sprintf("layer-%d.cue", layer))
-	if err := os.WriteFile(layerSchemaPath, []byte(layerSchemaContent), 0644); err != nil {
-		result.Valid = false
-		result.Error = fmt.Sprintf("Failed to write layer schema file: %v", err)
-		return result
-	}
-	schemaFiles = append(schemaFiles, layerSchemaPath)
-
-	// Write YAML content to temporary file
-	dataPath := filepath.Join(tmpDir, "data.yaml")
-	if err := os.WriteFile(dataPath, []byte(yamlContent), 0644); err != nil {
-		result.Valid = false
-		result.Error = fmt.Sprintf("Failed to write data file: %v", err)
-		return result
+	// Create an Overlay
+	// This maps "fake" filenames to the content strings.
+	overlay := map[string]load.Source{
+		"/base.cue":     load.FromBytes([]byte(baseSchemaContent)),
+		"/metadata.cue": load.FromBytes([]byte(metadataSchemaContent)),
+		"/mapping.cue":  load.FromBytes([]byte(mappingSchemaContent)),
+		"/layer.cue":    load.FromBytes([]byte(layerSchemaContent)),
 	}
 
-	// Load and validate using CUE
+	// 3. Configure the Loader
+	cfg := &load.Config{
+		Overlay: overlay,
+		Dir:     "/", // The root of our fake filesystem
+	}
+
+	// 4. Load the instances
+	// "." tells CUE to load the package found in the Dir ("/")
+	buildInstances := load.Instances([]string{"."}, cfg)
+
+	// Check for build/syntax errors in the schema itself
+	if len(buildInstances) != 1 {
+		result.Valid = false
+		result.Error = fmt.Sprintf("expected 1 CUE package, found %d. Ensure all schema files define the same package name.", len(buildInstances))
+		return result
+	}
+	if err := buildInstances[0].Err; err != nil {
+		result.Valid = false
+		result.Error = fmt.Sprintf("schema build failed: %v", err)
+		return result
+	}
+
+	// 5. Build the Schema Instance
 	ctx := cuecontext.New()
-
-	// Load all schema files together
-	schemaInstances := load.Instances(schemaFiles, &load.Config{
-		Dir: tmpDir,
-	})
-	if len(schemaInstances) == 0 || schemaInstances[0].Err != nil {
+	schema := ctx.BuildInstance(buildInstances[0])
+	if err := schema.Err(); err != nil {
 		result.Valid = false
-		if len(schemaInstances) > 0 && schemaInstances[0].Err != nil {
-			result.Error = fmt.Sprintf("Failed to load schema: %v", schemaInstances[0].Err)
-		} else {
-			result.Error = "Failed to load schema: no instances returned"
-		}
+		result.Error = fmt.Sprintf("schema compilation failed: %v", err)
 		return result
 	}
 
-	schemaValue := ctx.BuildInstance(schemaInstances[0])
-	if err := schemaValue.Err(); err != nil {
+	// 6. Narrow down the schema based on the Layer
+	var entryPoint cue.Value
+	switch layer {
+	case 1:
+		entryPoint = schema.LookupPath(cue.ParsePath("#GuidanceDocument"))
+	case 2:
+		entryPoint = schema.LookupPath(cue.ParsePath("#Catalog"))
+	case 3:
+		entryPoint = schema.LookupPath(cue.ParsePath("#PolicyDocument"))
+	case 4:
+		entryPoint = schema.LookupPath(cue.ParsePath("#EvaluationLog"))
+	}
+
+	// If the lookup fails, we default back to the whole schema or error out
+	if !entryPoint.Exists() {
 		result.Valid = false
-		result.Error = fmt.Sprintf("Failed to build schema: %v", err)
+		result.Error = fmt.Sprintf("could not find entry point definition for layer %d", layer)
 		return result
 	}
 
-	// Load data
-	dataInstances := load.Instances([]string{dataPath}, &load.Config{
-		Dir: tmpDir,
-	})
-	if len(dataInstances) == 0 || dataInstances[0].Err != nil {
+	yamlFile, err := yaml.Extract("data.yml", yamlContent)
+	if err != nil {
 		result.Valid = false
-		if len(dataInstances) > 0 && dataInstances[0].Err != nil {
-			result.Error = fmt.Sprintf("Failed to load data: %v", dataInstances[0].Err)
-		} else {
-			result.Error = "Failed to load data: no instances returned"
-		}
+		result.Error = fmt.Sprintf("Failed to parse YAML: %v", err)
 		return result
 	}
 
-	dataValue := ctx.BuildInstance(dataInstances[0])
-	if err := dataValue.Err(); err != nil {
+	// Build the YAML as a CUE value
+	data := ctx.BuildFile(yamlFile)
+	if err := data.Err(); err != nil {
 		result.Valid = false
-		result.Error = fmt.Sprintf("Failed to build data instance: %v", err)
+		result.Error = fmt.Sprintf("invalid data structure: %v", err)
 		return result
 	}
 
-	// Unify schema and data
-	unified := schemaValue.Unify(dataValue)
-	if err := unified.Err(); err != nil {
-		result.Valid = false
-		result.Error = fmt.Sprintf("Schema unification failed: %v", err)
-		return result
-	}
+	// 8. Unify Schema with Data
+	unified := entryPoint.Unify(data)
 
-	// Validate
+	// 9. Validate
+	// Validate with Concrete(true) ensures all fields are filled
 	if err := unified.Validate(cue.Concrete(true)); err != nil {
 		result.Valid = false
 		result.Error = fmt.Sprintf("Validation failed: %v", err)
-
-		// Extract detailed errors from the unified value
-		// CUE errors are typically embedded in the value itself
-		if unified.Err() != nil {
-			result.Errors = append(result.Errors, unified.Err().Error())
-		}
-
-		// Also add the validation error
-		result.Errors = append(result.Errors, err.Error())
+		result.Errors = append(result.Errors, result.Errors...)
 		return result
+	}
+	return result
+}
+
+// ValidationResult holds the result of CUE validation
+type ValidationResult struct {
+	Valid  bool     `json:"valid"`
+	Error  string   `json:"error"`
+	Errors []string `json:"errors"`
+}
+
+type ValidationReport struct {
+	ValidationResult `json:,inline`
+	Layer            int `json:"layer"`
+	Schema           struct {
+		URL        string `json:"url"`
+		Repository string `json:"repository"`
+	}
+}
+
+func (v ValidationReport) ToText(yamlContent string) string {
+	result := fmt.Sprintf(`# Gemara Layer %d Validation Report
+
+## CUE Schema Validation
+`, v.Layer)
+
+	if v.ValidationResult.Valid {
+		result += "✅ CUE validation PASSED\n\n"
+		result += fmt.Sprintf("The YAML content is valid according to the Layer %d CUE schema.\n\n", v.Layer)
+	} else {
+		result += "❌ CUE validation FAILED\n\n"
+		if v.ValidationResult.Error != "" {
+			result += fmt.Sprintf("**Validation Error:**\n```\n%s\n```\n\n", v.ValidationResult.Error)
+		}
+		if len(v.ValidationResult.Errors) > 0 {
+			result += "**Detailed Errors:**\n"
+			for i, err := range v.ValidationResult.Errors {
+				result += fmt.Sprintf("  %d. %s\n", i+1, err)
+			}
+			result += "\n"
+		}
+	}
+
+	result += fmt.Sprintf("## Schema Information\n\n")
+	result += fmt.Sprintf("- **Schema URL**: https://github.com/ossf/gemara/blob/main/schemas/layer-%d.cue\n", v.Layer)
+	result += fmt.Sprintf("- **Schema Repository**: https://github.com/ossf/gemara/tree/main/schemas\n\n")
+
+	if !v.ValidationResult.Valid {
+		result += fmt.Sprintf("## Your YAML Content\n\n")
+		result += fmt.Sprintf("```yaml\n")
+		result += fmt.Sprintf("%s\n", yamlContent)
+		result += fmt.Sprintf("```\n\n")
+
+		result += fmt.Sprintf("## Next Steps\n\n")
+		result += fmt.Sprintf("1. Review the validation errors above\n")
+		result += fmt.Sprintf("2. Check the suggestions section for common fixes\n")
+		result += fmt.Sprintf("3. Ensure all required fields are present (use `get_layer_schema_info` with layer=%d)\n", v.Layer)
+		result += fmt.Sprintf("4. Verify field types match the schema requirements\n")
+		result += fmt.Sprintf("5. Check that references use valid IDs (use `validate_artifact_references`)\n")
+		result += fmt.Sprintf("6. Review examples in the `create-layer%d` prompt\n\n", v.Layer)
 	}
 	return result
 }

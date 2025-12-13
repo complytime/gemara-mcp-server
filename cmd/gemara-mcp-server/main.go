@@ -77,9 +77,9 @@ var versionCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(versionCmd)
 
-	rootCmd.Flags().StringVar(&transport, "transport", "stdio", "transport mode (stdio/streamable)")
-	rootCmd.Flags().StringVar(&host, "host", "0.0.0.0", "host for StreamableHTTP transport")
-	rootCmd.Flags().IntVar(&port, "port", 8080, "port for StreamableHTTP transport")
+	rootCmd.Flags().StringVar(&transport, "transport", "stdio", "transport mode (stdio/streamable-http)")
+	rootCmd.Flags().StringVar(&host, "host", "0.0.0.0", "host for streamable HTTP transport")
+	rootCmd.Flags().IntVar(&port, "port", 8080, "port for streamable HTTP transport")
 	rootCmd.Flags().BoolVar(&debug, "debug", false, "Using debug log level")
 
 	// Set up default logger (will be reconfigured in RunE after flags are parsed)

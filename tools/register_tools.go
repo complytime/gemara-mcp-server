@@ -37,6 +37,11 @@ func (g *GemaraAuthoringTools) registerTools() []server.ServerTool {
 	tools = append(tools, g.newExportLayer2ToOSCALTool())
 	tools = append(tools, g.newExportLayer4ToSARIFTool())
 
+	// Parser Tools
+	tools = append(tools, g.newSimpleParseTool())
+	tools = append(tools, g.newBenchmarkParserTool())
+	tools = append(tools, g.newParseAndValidateTool())
+
 	return tools
 }
 
@@ -272,5 +277,56 @@ func (g *GemaraAuthoringTools) newExportLayer4ToSARIFTool() server.ServerTool {
 			mcp.WithString("catalog_id", mcp.Description("Optional Layer 2 Catalog ID to include control and requirement details in SARIF output.")),
 		),
 		Handler: g.handleExportLayer4ToSARIF,
+	}
+}
+
+// Parser Tool Definitions
+
+func (g *GemaraAuthoringTools) newSimpleParseTool() server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool(
+			"simple_parse",
+			mcp.WithDescription("Parse a PDF file using the simple parser (pdftotext). Extracts text content and structures it into blocks (headings, paragraphs, lists). Returns parsing results with metadata, page count, block statistics, and optional full document content. Optionally validates Layer 1 YAML content if provided."),
+			mcp.WithString("file_path", mcp.Description("Path to the PDF file to parse."), mcp.Required()),
+			mcp.WithString("temp_dir", mcp.Description("Optional temporary directory for intermediate files. Defaults to system temp directory.")),
+			mcp.WithBoolean("keep_temp_files", mcp.Description("Whether to keep temporary files after parsing. Defaults to false.")),
+			mcp.WithBoolean("include_full_document", mcp.Description("Whether to include the full parsed document in the response. Defaults to false (returns summary only).")),
+			mcp.WithString("layer1_yaml_content", mcp.Description("Optional Layer 1 YAML content to validate after parsing. If provided, validation results will be included in the response.")),
+			mcp.WithString("output_format", mcp.Description("Output format: 'json' (default) or 'yaml'.")),
+		),
+		Handler: g.handleSimpleParse,
+	}
+}
+
+func (g *GemaraAuthoringTools) newBenchmarkParserTool() server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool(
+			"benchmark_parser",
+			mcp.WithDescription("Benchmark parser performance by running multiple iterations and measuring execution time. Returns statistics including min, max, and average duration, along with success/failure rates."),
+			mcp.WithString("file_path", mcp.Description("Path to the PDF file to benchmark."), mcp.Required()),
+			mcp.WithNumber("iterations", mcp.Description("Number of iterations to run (1-10). Defaults to 3.")),
+			mcp.WithString("parser_type", mcp.Description("Parser type to benchmark: 'simple' (default) or 'docling'.")),
+			mcp.WithString("temp_dir", mcp.Description("Optional temporary directory for intermediate files. Defaults to system temp directory.")),
+			mcp.WithBoolean("include_details", mcp.Description("Whether to include individual run details in the response. Defaults to false.")),
+			mcp.WithString("output_format", mcp.Description("Output format: 'json' (default) or 'yaml'.")),
+		),
+		Handler: g.handleBenchmarkParser,
+	}
+}
+
+func (g *GemaraAuthoringTools) newParseAndValidateTool() server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool(
+			"parse_and_validate",
+			mcp.WithDescription("Run the complete parsing pipeline (parse -> segment -> convert -> validate) on a PDF file. Returns results from each stage including timing information and validation results. Performs both programmatic and CUE validation."),
+			mcp.WithString("file_path", mcp.Description("Path to the PDF file to parse and validate."), mcp.Required()),
+			mcp.WithString("parser_type", mcp.Description("Parser type: 'simple' (default) or 'docling'.")),
+			mcp.WithString("segmenter_type", mcp.Description("Segmenter type: 'generic' (default), 'pci-dss', or 'nist-800-53'.")),
+			mcp.WithBoolean("strict", mcp.Description("Enable strict validation mode. Defaults to false.")),
+			mcp.WithString("temp_dir", mcp.Description("Optional temporary directory for intermediate files. Defaults to system temp directory.")),
+			mcp.WithBoolean("include_layer1_document", mcp.Description("Whether to include the full Layer 1 document in the response. Defaults to false.")),
+			mcp.WithString("output_format", mcp.Description("Output format: 'json' (default) or 'yaml'.")),
+		),
+		Handler: g.handleParseAndValidate,
 	}
 }

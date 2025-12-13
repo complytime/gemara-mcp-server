@@ -2,6 +2,13 @@
   "mcpServers": {
     "gemara-mcp-server": {
       "url": "http://localhost:8080/mcp"
+    },
+    "docling": {
+      "command": "uvx",
+      "args": [
+        "--from=docling-mcp",
+        "docling-mcp-server"
+      ]
     }
   }
 }

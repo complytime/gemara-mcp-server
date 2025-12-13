@@ -80,7 +80,7 @@ func (s *Server) Start() error {
 	switch s.config.Transport {
 	case "stdio":
 		return s.ServeStdio()
-	case "streamable":
+	case "streamable-http":
 		return s.ServeStreamableHTTP()
 	default:
 		return fmt.Errorf("unsupported transport mode: %s", s.config.Transport)
