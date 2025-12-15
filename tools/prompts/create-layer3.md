@@ -2,15 +2,15 @@
 
 ## Overview
 
-Layer 3 Policies provide risk-informed governance rules tailored to an organization. These policies are based on Layer 1 Guidance and Layer 2 Controls, but customized for organizational risk appetite.
+This prompt provides the context and necessary tools for creation of layer 3 Policies. Layer 3 Policies provide risk-informed governance rules tailored to an organization. These policies are based on Layer 1 Guidance and Layer 2 Controls, but customized for organizational risk appetite.
 
 ## Workflow
 
 When creating a Layer 3 Policy, follow these steps:
 
-1. **Identify scope**: Determine technology, boundaries, and providers
-2. **Find relevant controls**: Use `list_layer2_controls` and `search_layer2_controls`
-3. **Find relevant guidance**: Use `list_layer1_guidance` and `search_layer1_guidance`
+1. **Identify scope**: Determine technology, boundaries, and providers associated with the policy request. An example prompt would be "Create a  policy for my organization that operates in the financial services industry and needs pci-dss version 4.0.1 mappings. Ensure that the policy conforms to the schema."
+2. **Find relevant controls**: Use `list_layer2_controls` and `search_layer2_controls` and find the controls that are threat-informed and technology specific.
+3. **Find relevant guidance**: Use `list_layer1_guidance` and `search_layer1_guidance` use the prompt context for better searching (i.e. the example from step 1 where the guidance document necessary would be in the financial services industry. PCI-DSS v.4.0.1 would be an option)
 4. **Generate the YAML content** following the Gemara Layer 3 schema
 5. **Validate the YAML** using `validate_gemara_yaml` tool (layer=3)
 6. **Store the YAML** using `store_layer3_yaml` tool (which validates with CUE automatically)
@@ -30,17 +30,17 @@ metadata:
 
 risk-appetite: "low"  # Options: low, medium, high
 
-layer2-controls:
+layer2-controls: # control-ids from layer 2 that this policy references
   - "control-id-1"
   - "control-id-2"
 
-layer1-guidance:
-  - "guidance-id-1"
+layer1-guidance: # guidance ids (layer 1 metadata.id) that this policy references
+  - "guidance-id-1" # example from pci-dss 4.0.1 
   - "guidance-id-2"
 
 requirements:
   - id: req-1
-    description: "Policy requirement"
+    description: "Policy requirement" # Example encyption at rest
     control-mapping:
       - "control-id-1"
 ```
@@ -76,7 +76,7 @@ Before creating a policy, search for relevant artifacts:
 
 ## Validation
 
-Before storing, always validate your YAML:
+Before storing, always validate your YAML with the schema:
 
 1. Use `validate_gemara_yaml` with `layer=3` to check schema compliance
 2. Fix any validation errors
@@ -85,6 +85,9 @@ Before storing, always validate your YAML:
 ## Examples
 
 ### Simple Policy
+
+A simple policy is minimalistic without significant results from the layer1 and layer2 tools
+
 ```yaml
 metadata:
   id: org-security-policy
@@ -99,6 +102,7 @@ layer1-guidance:
 ```
 
 ### Complex Policy with Requirements
+
 ```yaml
 metadata:
   id: production-k8s-policy
@@ -127,8 +131,8 @@ requirements:
 
 ## Best Practices
 
-1. **Start with scoping**: Use `create_policy_through_scoping` for automated scoping
-2. **Reference existing artifacts**: Link to Layer 1 and Layer 2 artifacts
+1. **Start with scoping**: Use `create_policy_through_scoping` for automated scoping and using the context provided to narrow down the intended scope
+2. **Reference existing artifacts**: Link to Layer 1 and Layer 2 artifacts and leverage the patterns
 3. **Define risk appetite**: Clearly specify organizational risk tolerance
 4. **Use descriptive IDs**: `prod-k8s-security` not `policy1`
 5. **Validate before storing**: Catch errors early
@@ -148,5 +152,6 @@ requirements:
 ## Schema Reference
 
 For complete schema details, use:
+
 - `get_layer_schema_info` with `layer=3`
 - Official schema: https://github.com/ossf/gemara/blob/main/schemas/layer-3.cue

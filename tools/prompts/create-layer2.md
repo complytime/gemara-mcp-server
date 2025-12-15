@@ -34,10 +34,10 @@ controls:
       - "threat-id-1"
       - "threat-id-2"
     guideline-mapping:
-      - "layer1-guidance-id"  # References to Layer 1 guidance
+      - "layer1-guidance-id"  # References to Layer 1 guidance (layer 1 metadata.id)
     assessment-requirements:
-      - id: req-1
-        description: "Assessment requirement"
+      - id: req-1   # Use the requirement name like "assessment_requirement_id"
+        description: "Assessment requirement description"
         applicability:
           - "production"
 ```
@@ -49,7 +49,7 @@ controls:
 - **control.id**: Unique identifier for each control
 - **control.technology**: Technology domain (e.g., "kubernetes", "docker", "github")
 - **control.threats**: Array of threat IDs this control mitigates
-- **control.guideline-mapping**: References to Layer 1 guidance IDs
+- **control.guideline-mapping**: References to Layer 1 guidance IDs (layer 1 metadata.id for those that apply)
 
 ## Validation
 
@@ -62,6 +62,7 @@ Before storing, always validate your YAML:
 ## Examples
 
 ### Simple Control
+
 ```yaml
 metadata:
   id: simple-controls
@@ -75,6 +76,7 @@ controls:
 ```
 
 ### Complex Control with Mappings
+
 ```yaml
 metadata:
   id: k8s-security-controls
@@ -98,7 +100,7 @@ controls:
 ## Best Practices
 
 1. **Reference Layer 1**: Use `guideline-mapping` to link to Layer 1 guidance
-2. **Specify technology**: Always include the `technology` field
+2. **Specify technology**: Always include the `technology` field to yield the greatest accuracy
 3. **Identify threats**: List threats each control mitigates
 4. **Use descriptive IDs**: `k8s-rbac-enable` not `ctrl1`
 5. **Validate before storing**: Catch errors early
@@ -116,5 +118,6 @@ controls:
 ## Schema Reference
 
 For complete schema details, use:
+
 - `get_layer_schema_info` with `layer=2`
 - Official schema: https://github.com/ossf/gemara/blob/main/schemas/layer-2.cue

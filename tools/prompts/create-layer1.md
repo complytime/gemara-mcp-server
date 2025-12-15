@@ -33,7 +33,7 @@ metadata:
     technology-domains:
       - "Cloud Computing"
       - "Network Security"
-    jurisdictions:
+    jurisdictions: 
       - "United States"
       - "European Union"
 
@@ -54,7 +54,7 @@ categories:
         guideline-parts:
           - id: part-1
             title: "Part Title"
-            text: "Detailed text for this part"
+            text: "Detailed text for this part of the guideline"
             recommendations:
               - "Part-specific recommendation"
 ```
@@ -79,6 +79,7 @@ Before storing, always validate your YAML:
 ## Examples
 
 ### Simple Guidance (minimal structure)
+
 ```yaml
 metadata:
   id: simple-guidance
@@ -93,12 +94,13 @@ categories:
 ```
 
 ### Complex Guidance (full structure)
+
 See the full example above with categories, guidelines, parts, and applicability.
 
 ## Best Practices
 
 1. **Use descriptive IDs**: `pci-dss-v4-0` not `doc1`
-2. **Include applicability**: Helps with policy scoping later
+2. **Include applicability**: Applicability helps with better policy scoping when working with other layers
 3. **Structure with categories**: Organize related guidelines together
 4. **Add guideline-parts**: For detailed requirements
 5. **Validate before storing**: Catch errors early
@@ -106,7 +108,7 @@ See the full example above with categories, guidelines, parts, and applicability
 ## Related Tools
 
 - `validate_gemara_yaml`: Validate YAML before storing
-- `store_layer1_yaml`: Store validated YAML (preferred method)
+- `store_layer1_yaml`: Store validated YAML (this is the preferred method)
 - `load_layer1_from_file`: Load from existing file
 - `get_layer1_guidance`: Retrieve stored guidance
 - `list_layer1_guidance`: List all available guidance
@@ -115,5 +117,6 @@ See the full example above with categories, guidelines, parts, and applicability
 ## Schema Reference
 
 For complete schema details, use:
+
 - `get_layer_schema_info` with `layer=1`
 - Official schema: https://github.com/ossf/gemara/blob/main/schemas/layer-1.cue
