@@ -30,7 +30,6 @@ metadata:
 
 risk-appetite: "low"  # Options: low, medium, high
 
-layer2-controls: # control-ids from layer 2 that this policy references
   - "control-id-1"
   - "control-id-2"
 
