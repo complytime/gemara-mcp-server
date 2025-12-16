@@ -76,7 +76,7 @@ func (g *GemaraAuthoringTools) handleListLayer1Guidance(_ context.Context, _ mcp
 	}
 
 	result += "\nUse `get_layer1_guidance` with a guidance_id to get full details.\n"
-	result += "Use these guidance IDs in `guideline_mapping` when creating Layer 2 controls.\n"
+	result += "Use these guidance IDs in `guideline_mappings` when creating Layer 2 controls.\n"
 
 	return mcp.NewToolResultText(result), nil
 }
