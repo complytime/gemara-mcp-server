@@ -143,11 +143,18 @@ This engineering-first approach transforms traditional GRC from manual, periodic
 - **Schema Repository**: %s
 - **Schema Base URL**: %s
 
+**Common Schemas** (used by all layers for authoring):
+- [metadata.cue](%s/metadata.cue) - Defines metadata structure (id, version, description, author, mapping-references)
+- [mapping.cue](%s/mapping.cue) - Defines mapping structures (MappingReference, MappingEntry, MultiMapping, SingleMapping)
+- [base.cue](%s/base.cue) - Common base definitions
+
+*Access via MCP resources: gemara://schema/common/metadata, gemara://schema/common/mapping, gemara://schema/common/base*
+
 ## The 6 Layer Logical Model
 
 Each layer in the model builds upon the lower layer, though in higher-level use cases you may find examples where multiple lower layers are brought into a higher level together. The model enables interoperability between different tools and systems.
 
-`, info.Name, info.Description, info.Organization, info.Website, info.Repository, info.SchemaInfo.Version, info.SchemaInfo.Repository, info.SchemaInfo.BaseURL)
+`, info.Name, info.Description, info.Organization, info.Website, info.Repository, info.SchemaInfo.Version, info.SchemaInfo.Repository, info.SchemaInfo.BaseURL, info.SchemaInfo.BaseURL, info.SchemaInfo.BaseURL, info.SchemaInfo.BaseURL)
 
 	for _, layer := range info.Layers {
 		result += fmt.Sprintf("### Layer %d: %s\n\n", layer.Number, layer.Name)
