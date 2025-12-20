@@ -164,11 +164,11 @@ chmod 755 artifacts
 # Run with StreamableHTTP transport (allows storing new artifacts)
 make container-run
 # or
-podman run --rm --userns=keep-id -p 8080:8080 \
+podman run --rm --userns=keep-id -p 127.0.0.1:8080:8080 \
   -v "$(pwd)/artifacts:/app/artifacts:z" \
   --user $(id -u):$(id -g) \
   gemara-mcp-server:latest \
-  ./gemara-mcp-server --transport=streamable --port=8080 --debug
+  ./gemara-mcp-server --transport=streamable-http --host=0.0.0.0 --port=8080 --debug
 ```
 
 **Read-Only Mode (Query Only):**
@@ -179,17 +179,18 @@ mkdir -p artifacts
 # Run with read-only artifacts (cannot store new artifacts, query only)
 make container-run-readonly
 # or
-podman run --rm --userns=keep-id -p 8080:8080 \
+podman run --rm --userns=keep-id -p 127.0.0.1:8080:8080 \
   -v "$(pwd)/artifacts:/app/artifacts:z,ro" \
   --user $(id -u):$(id -g) \
   gemara-mcp-server:latest \
-  ./gemara-mcp-server --transport=streamable --port=8080 --debug
+  ./gemara-mcp-server --transport=streamable-http --host=0.0.0.0 --port=8080 --debug
 ```
 
 **Note:** 
 - The `--userns=keep-id` flag ensures the container user matches your host user ID, preventing permission issues when writing to the mounted artifacts directory.
 - The `:z` flag (lowercase) sets a shared SELinux context, which is less restrictive than `:Z` (private context).
 - Ensure the `artifacts` directory exists and is writable before running the container.
+- The container binds to `0.0.0.0` inside the container, but podman restricts access to `127.0.0.1` on the host via the port mapping `-p 127.0.0.1:8080:8080`.
 
 The server will be accessible at `http://localhost:8080/mcp` for StreamableHTTP connections.
 
@@ -349,7 +350,7 @@ Debug logs are written to `stderr`. For stdio transport, logs may be mixed with 
 For StreamableHTTP, logs appear in the terminal:
 
 ```bash
-./bin/gemara-mcp-server --transport streamable --port 8080 --debug
+./bin/gemara-mcp-server --transport streamable-http --port 8080 --debug
 ```
 
 ### Common Issues
@@ -364,7 +365,7 @@ For StreamableHTTP, logs appear in the terminal:
 
 **Issue: "Port already in use" (Container)**
 - **Solution:** Use a different port or stop the existing container
-- **Fix:** Change port mapping: `podman run -p 8081:8080 ...`
+- **Fix:** Change port mapping: `podman run -p 127.0.0.1:8081:8080 ...`
 
 **Issue: "CUE validation failed"**
 - **Solution:** Check YAML syntax and schema compliance
