@@ -33,18 +33,18 @@ container-build: ## Build container image
 container-run: container-build ## Run container with StreamableHTTP transport and verbose logging
 	@mkdir -p artifacts
 	@chmod 755 artifacts
-	podman run --rm --userns=keep-id -p 8080:8080 \
+	podman run --rm --userns=keep-id -p 127.0.0.1:8080:8080 \
         -v "$(PWD)/artifacts:/app/artifacts:z" \
         --user $(shell id -u):$(shell id -g) \
-		$(IMAGE_NAME):$(IMAGE_TAG) ./gemara-mcp-server --transport=streamable-http --port=8080
+		$(IMAGE_NAME):$(IMAGE_TAG) ./gemara-mcp-server --transport=streamable-http --host=0.0.0.0 --port=8080
 
 
 container-run-readonly: container-build ## Run container with read-only artifacts (query-only mode, cannot store new artifacts)
 	@mkdir -p artifacts
-	podman run --rm --userns=keep-id -p 8080:8080 \
+	podman run --rm --userns=keep-id -p 127.0.0.1:8080:8080 \
         -v "$(PWD)/artifacts:/app/artifacts:z,ro" \
         --user $(shell id -u):$(shell id -g) \
-		$(IMAGE_NAME):$(IMAGE_TAG) ./gemara-mcp-server --transport=streamable-http --port=8080 --debug
+		$(IMAGE_NAME):$(IMAGE_TAG) ./gemara-mcp-server --transport=streamable-http --host=0.0.0.0 --port=8080 --debug
 
 container-clean: ## Clean container image
 	podman rmi $(IMAGE_NAME):$(IMAGE_TAG)

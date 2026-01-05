@@ -42,4 +42,4 @@ USER gemara
 EXPOSE 8080
 
 # Default command runs with StreamableHTTP transport on port 8080
-CMD ["./gemara-mcp-server", "--transport=streamable-http", "--port=8080"]
+CMD ["./gemara-mcp-server", "--transport=streamable-http", "--host=0.0.0.0", "--port=8080"]
