@@ -7,24 +7,22 @@ import (
 	"github.com/complytime/gemara-mcp-server/storage"
 	"github.com/complytime/gemara-mcp-server/tools/info"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/ossf/gemara/layer1"
-	"github.com/ossf/gemara/layer2"
-	"github.com/ossf/gemara/layer3"
+	"github.com/ossf/gemara"
 )
 
 // GemaraAuthoringTools provides tools for creating and validating Gemara artifacts
 type GemaraAuthoringTools struct {
-	tools   []server.ServerTool
-	prompts []server.ServerPrompt
+	tools     []server.ServerTool
+	prompts   []server.ServerPrompt
 	resources []server.ServerResource
 	// Embedded info tools for validation and schema access
 	infoTools *info.GemaraInfoTools
 	// Storage interface - can be local or remote
 	storage storage.Storage
 	// In-memory cache for quick access (populated from storage index)
-	layer1Guidance map[string]*layer1.GuidanceDocument
-	layer2Catalogs map[string]*layer2.Catalog
-	layer3Policies map[string]*layer3.PolicyDocument
+	layer1Guidance map[string]*gemara.GuidanceDocument
+	layer2Catalogs map[string]*gemara.Catalog
+	layer3Policies map[string]*gemara.Policy
 	// CUE schema cache
 	schemaCache map[int]string // layer -> schema content
 }
@@ -38,9 +36,9 @@ func NewGemaraAuthoringTools() (*GemaraAuthoringTools, error) {
 // If storage is nil, it will use the default local file-based storage.
 func NewGemaraAuthoringToolsWithStorage(customStorage storage.Storage) (*GemaraAuthoringTools, error) {
 	g := &GemaraAuthoringTools{
-		layer1Guidance: make(map[string]*layer1.GuidanceDocument),
-		layer2Catalogs: make(map[string]*layer2.Catalog),
-		layer3Policies: make(map[string]*layer3.PolicyDocument),
+		layer1Guidance: make(map[string]*gemara.GuidanceDocument),
+		layer2Catalogs: make(map[string]*gemara.Catalog),
+		layer3Policies: make(map[string]*gemara.Policy),
 		schemaCache:    make(map[int]string),
 	}
 

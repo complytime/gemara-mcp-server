@@ -10,8 +10,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/ossf/gemara/layer1"
-	"github.com/ossf/gemara/layer2"
+	"github.com/ossf/gemara"
 )
 
 // stringPtr returns a pointer to the given string
@@ -142,101 +141,43 @@ func containsIgnoreCase(s, substr string) bool {
 }
 
 // matchesLayer1Applicability checks if Layer 1 Guidance matches the policy scope
-// Layer 1 applicability can have technology-domains, industry-sectors, and jurisdictions
-func (g *GemaraAuthoringTools) matchesLayer1Applicability(guidance *layer1.GuidanceDocument, technologyScope, boundariesScope, providersScope []string) bool {
+// Layer 1 applicability now uses ApplicabilityCategories in metadata
+func (g *GemaraAuthoringTools) matchesLayer1Applicability(guidance *gemara.GuidanceDocument, technologyScope, boundariesScope, providersScope []string) bool {
 	// If no scope is provided, match all
 	if len(technologyScope) == 0 && len(boundariesScope) == 0 && len(providersScope) == 0 {
 		return true
 	}
 
-	// Check if applicability exists
-	if guidance.Metadata.Applicability == nil {
-		// If no applicability field, match if no scopes are required
+	// Check if applicability categories exist
+	if len(guidance.Metadata.ApplicabilityCategories) == 0 {
+		// If no applicability categories, match if no scopes are required
 		return len(technologyScope) == 0 && len(boundariesScope) == 0 && len(providersScope) == 0
 	}
 
-	applicability := guidance.Metadata.Applicability
+	// Match against applicability categories by ID or Title
+	// Since the new structure uses Categories instead of specific fields,
+	// we'll match if any category ID or title matches any scope term
+	allScopes := append(append(technologyScope, boundariesScope...), providersScope...)
+	if len(allScopes) == 0 {
+		return true
+	}
 
-	// Check technology-domains
-	if len(technologyScope) > 0 {
-		if len(applicability.TechnologyDomains) == 0 {
-			// If technology scope is required but guidance has no technology domains, no match
-			return false
-		}
-		hasTechMatch := false
-		for _, scopeTech := range technologyScope {
-			for _, domain := range applicability.TechnologyDomains {
-				// Case-insensitive partial match
-				if containsIgnoreCase(domain, scopeTech) || containsIgnoreCase(scopeTech, domain) {
-					hasTechMatch = true
-					break
-				}
+	for _, category := range guidance.Metadata.ApplicabilityCategories {
+		for _, scope := range allScopes {
+			// Case-insensitive match on category ID or title
+			if containsIgnoreCase(category.Id, scope) || containsIgnoreCase(scope, category.Id) ||
+				containsIgnoreCase(category.Title, scope) || containsIgnoreCase(scope, category.Title) {
+				return true
 			}
-			if hasTechMatch {
-				break
-			}
-		}
-		if !hasTechMatch {
-			return false
 		}
 	}
 
-	// Check boundaries (jurisdictions)
-	if len(boundariesScope) > 0 {
-		if len(applicability.Jurisdictions) == 0 {
-			// If boundaries scope is required but guidance has no jurisdictions, no match
-			return false
-		}
-		hasBoundaryMatch := false
-		for _, scopeBoundary := range boundariesScope {
-			for _, jurisdiction := range applicability.Jurisdictions {
-				// Case-insensitive partial match
-				if containsIgnoreCase(jurisdiction, scopeBoundary) || containsIgnoreCase(scopeBoundary, jurisdiction) {
-					hasBoundaryMatch = true
-					break
-				}
-			}
-			if hasBoundaryMatch {
-				break
-			}
-		}
-		if !hasBoundaryMatch {
-			return false
-		}
-	}
-
-	// Check industry-sectors (for providers scope if needed)
-	// Note: providers scope doesn't have a direct mapping in Layer 1, but we can check industry-sectors
-	if len(providersScope) > 0 {
-		if len(applicability.IndustrySectors) == 0 {
-			// If providers scope is required but guidance has no industry sectors, no match
-			return false
-		}
-		hasProviderMatch := false
-		for _, scopeProvider := range providersScope {
-			for _, sector := range applicability.IndustrySectors {
-				// Case-insensitive partial match
-				if containsIgnoreCase(sector, scopeProvider) || containsIgnoreCase(scopeProvider, sector) {
-					hasProviderMatch = true
-					break
-				}
-			}
-			if hasProviderMatch {
-				break
-			}
-		}
-		if !hasProviderMatch {
-			return false
-		}
-	}
-
-	// All required scopes matched
-	return true
+	return false
 }
 
 // matchesLayer2Applicability checks if Layer 2 Control matches the policy scope
 // Layer 2 controls can have technology field and assessment requirements with applicability
-func (g *GemaraAuthoringTools) matchesLayer2Applicability(control layer2.Control, technologyScope, boundariesScope, providersScope []string) bool {
+func (g *GemaraAuthoringTools) matchesLayer2Applicability(control gemara.Control, technologyScope, boundariesScope, providersScope []string) bool {
 	// If no scope is provided, match all
 	if len(technologyScope) == 0 && len(boundariesScope) == 0 && len(providersScope) == 0 {
 		return true

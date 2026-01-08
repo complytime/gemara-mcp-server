@@ -8,8 +8,7 @@ import (
 	"github.com/complytime/gemara-mcp-server/internal/consts"
 	"github.com/complytime/gemara-mcp-server/storage"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/ossf/gemara/layer1"
-	"github.com/ossf/gemara/layer2"
+	"github.com/ossf/gemara"
 )
 
 // handleFindApplicableArtifacts finds Layer 1 and Layer 2 artifacts applicable to a given policy scope
@@ -49,15 +48,14 @@ func (g *GemaraAuthoringTools) handleFindApplicableArtifacts(ctx context.Context
 			continue
 		}
 
-		for _, family := range catalog.ControlFamilies {
-			for _, control := range family.Controls {
-				if g.matchesLayer2Applicability(control, technologies, boundaries, providers) {
-					applicableLayer2 = append(applicableLayer2, controlRef{
-						catalogID: entry.ID,
-						familyID:  family.Id,
-						controlID: control.Id,
-					})
-				}
+		// Controls are now at catalog level, not nested in families
+		for _, control := range catalog.Controls {
+			if g.matchesLayer2Applicability(control, technologies, boundaries, providers) {
+				applicableLayer2 = append(applicableLayer2, controlRef{
+					catalogID: entry.ID,
+					familyID:  control.Family,
+					controlID: control.Id,
+				})
 			}
 		}
 	}
@@ -115,7 +113,7 @@ func (g *GemaraAuthoringTools) handleFindApplicableArtifacts(ctx context.Context
 		result.WriteString(fmt.Sprintf("Found %d applicable guidance document(s):\n\n", len(applicableLayer1)))
 		for _, guidanceID := range applicableLayer1 {
 			guidance := g.layer1Guidance[guidanceID]
-			result.WriteString(fmt.Sprintf("- **%s**: %s", guidanceID, guidance.Metadata.Title))
+			result.WriteString(fmt.Sprintf("- **%s**: %s", guidanceID, guidance.Title))
 			if guidance.Metadata.Version != "" {
 				result.WriteString(fmt.Sprintf(" (v%s)", guidance.Metadata.Version))
 			}
@@ -139,7 +137,7 @@ func (g *GemaraAuthoringTools) handleFindApplicableArtifacts(ctx context.Context
 
 		for catalogID, controls := range catalogMap {
 			catalog := g.layer2Catalogs[catalogID]
-			result.WriteString(fmt.Sprintf("### Catalog: %s\n\n", catalog.Metadata.Title))
+			result.WriteString(fmt.Sprintf("### Catalog: %s\n\n", catalog.Title))
 			for _, ctrl := range controls {
 				control := g.findControl(catalogID, ctrl.familyID, ctrl.controlID)
 				if control != nil {
@@ -175,7 +173,7 @@ func (g *GemaraAuthoringTools) getLayerEntries(layer int) []*storage.ArtifactInd
 			entries = append(entries, &storage.ArtifactIndexEntry{
 				ID:    guidanceID,
 				Layer: consts.Layer1,
-				Title: guidance.Metadata.Title,
+				Title: guidance.Title,
 			})
 		}
 	case consts.Layer2:
@@ -183,7 +181,7 @@ func (g *GemaraAuthoringTools) getLayerEntries(layer int) []*storage.ArtifactInd
 			entries = append(entries, &storage.ArtifactIndexEntry{
 				ID:    catalogID,
 				Layer: consts.Layer2,
-				Title: catalog.Metadata.Title,
+				Title: catalog.Title,
 			})
 		}
 	}
@@ -191,13 +189,13 @@ func (g *GemaraAuthoringTools) getLayerEntries(layer int) []*storage.ArtifactInd
 }
 
 // loadLayer1Guidance loads a Layer 1 Guidance document from cache or storage
-func (g *GemaraAuthoringTools) loadLayer1Guidance(guidanceID string) *layer1.GuidanceDocument {
+func (g *GemaraAuthoringTools) loadLayer1Guidance(guidanceID string) *gemara.GuidanceDocument {
 	if gd, exists := g.layer1Guidance[guidanceID]; exists {
 		return gd
 	}
 	if g.storage != nil {
 		if retrieved, err := g.storage.Retrieve(consts.Layer1, guidanceID); err == nil {
-			if gd, ok := retrieved.(*layer1.GuidanceDocument); ok {
+			if gd, ok := retrieved.(*gemara.GuidanceDocument); ok {
 				g.layer1Guidance[guidanceID] = gd
 				return gd
 			}
@@ -207,13 +205,13 @@ func (g *GemaraAuthoringTools) loadLayer1Guidance(guidanceID string) *layer1.Gui
 }
 
 // loadLayer2Catalog loads a Layer 2 Catalog from cache or storage
-func (g *GemaraAuthoringTools) loadLayer2Catalog(catalogID string) *layer2.Catalog {
+func (g *GemaraAuthoringTools) loadLayer2Catalog(catalogID string) *gemara.Catalog {
 	if c, exists := g.layer2Catalogs[catalogID]; exists {
 		return c
 	}
 	if g.storage != nil {
 		if retrieved, err := g.storage.Retrieve(consts.Layer2, catalogID); err == nil {
-			if c, ok := retrieved.(*layer2.Catalog); ok {
+			if c, ok := retrieved.(*gemara.Catalog); ok {
 				g.layer2Catalogs[catalogID] = c
 				return c
 			}
@@ -223,12 +221,12 @@ func (g *GemaraAuthoringTools) loadLayer2Catalog(catalogID string) *layer2.Catal
 }
 
 // findControlFamily finds a control family by ID
-func (g *GemaraAuthoringTools) findControlFamily(catalogID, familyID string) *layer2.ControlFamily {
+func (g *GemaraAuthoringTools) findControlFamily(catalogID, familyID string) *gemara.Family {
 	catalog, ok := g.layer2Catalogs[catalogID]
 	if !ok {
 		return nil
 	}
-	for _, family := range catalog.ControlFamilies {
+	for _, family := range catalog.Families {
 		if family.Id == familyID {
 			return &family
 		}
@@ -237,14 +235,14 @@ func (g *GemaraAuthoringTools) findControlFamily(catalogID, familyID string) *la
 }
 
 // findControl finds a control by ID
-func (g *GemaraAuthoringTools) findControl(catalogID, familyID, controlID string) *layer2.Control {
-	family := g.findControlFamily(catalogID, familyID)
-	if family == nil {
+func (g *GemaraAuthoringTools) findControl(catalogID, familyID, controlID string) *gemara.Control {
+	catalog, ok := g.layer2Catalogs[catalogID]
+	if !ok {
 		return nil
 	}
-	for _, control := range family.Controls {
-		if control.Id == controlID {
-			return &control
+	for i := range catalog.Controls {
+		if catalog.Controls[i].Id == controlID && catalog.Controls[i].Family == familyID {
+			return &catalog.Controls[i]
 		}
 	}
 	return nil

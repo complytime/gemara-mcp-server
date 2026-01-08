@@ -1,9 +1,7 @@
 package authoring
 
 import (
-	"github.com/ossf/gemara/layer1"
-	"github.com/ossf/gemara/layer2"
-	"github.com/ossf/gemara/layer3"
+	"github.com/ossf/gemara"
 )
 
 // LoadArtifactsDir loads Gemara artifacts from the artifacts directory
@@ -17,7 +15,7 @@ func (g *GemaraAuthoringTools) LoadArtifactsDir() {
 		for _, entry := range g.storage.List(1) {
 			if _, exists := g.layer1Guidance[entry.ID]; !exists {
 				if retrieved, err := g.storage.Retrieve(1, entry.ID); err == nil {
-					if guidance, ok := retrieved.(*layer1.GuidanceDocument); ok {
+					if guidance, ok := retrieved.(*gemara.GuidanceDocument); ok {
 						g.layer1Guidance[entry.ID] = guidance
 					}
 				}
@@ -27,7 +25,7 @@ func (g *GemaraAuthoringTools) LoadArtifactsDir() {
 		for _, entry := range g.storage.List(2) {
 			if _, exists := g.layer2Catalogs[entry.ID]; !exists {
 				if retrieved, err := g.storage.Retrieve(2, entry.ID); err == nil {
-					if catalog, ok := retrieved.(*layer2.Catalog); ok {
+					if catalog, ok := retrieved.(*gemara.Catalog); ok {
 						g.layer2Catalogs[entry.ID] = catalog
 					}
 				}
@@ -37,7 +35,7 @@ func (g *GemaraAuthoringTools) LoadArtifactsDir() {
 		for _, entry := range g.storage.List(3) {
 			if _, exists := g.layer3Policies[entry.ID]; !exists {
 				if retrieved, err := g.storage.Retrieve(3, entry.ID); err == nil {
-					if policy, ok := retrieved.(*layer3.PolicyDocument); ok {
+					if policy, ok := retrieved.(*gemara.Policy); ok {
 						g.layer3Policies[entry.ID] = policy
 					}
 				}

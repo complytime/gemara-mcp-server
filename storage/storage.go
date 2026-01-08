@@ -9,9 +9,7 @@ import (
 
 	"github.com/complytime/gemara-mcp-server/internal/consts"
 	"github.com/goccy/go-yaml"
-	"github.com/ossf/gemara/layer1"
-	"github.com/ossf/gemara/layer2"
-	"github.com/ossf/gemara/layer3"
+	"github.com/ossf/gemara"
 )
 
 // ArtifactIndexEntry represents an entry in the storage index
@@ -90,22 +88,22 @@ func (s *ArtifactStorage) loadIndex() error {
 
 				switch layer {
 				case consts.Layer1:
-					guidance := &layer1.GuidanceDocument{}
+					guidance := &gemara.GuidanceDocument{}
 					if err := guidance.LoadFile(fmt.Sprintf("file://%s", absPath)); err == nil {
 						artifactID = guidance.Metadata.Id
-						title = guidance.Metadata.Title
+						title = guidance.Title
 					}
 				case consts.Layer2:
-					catalog := &layer2.Catalog{}
+					catalog := &gemara.Catalog{}
 					if err := catalog.LoadFile(fmt.Sprintf("file://%s", absPath)); err == nil {
 						artifactID = catalog.Metadata.Id
-						title = catalog.Metadata.Title
+						title = catalog.Title
 					}
 				case consts.Layer3:
-					policy := &layer3.PolicyDocument{}
+					policy := &gemara.Policy{}
 					if err := policy.LoadFile(fmt.Sprintf("file://%s", absPath)); err == nil {
 						artifactID = policy.Metadata.Id
-						title = policy.Metadata.Title
+						title = policy.Title
 					}
 				}
 
@@ -161,16 +159,16 @@ func (s *ArtifactStorage) Add(layer int, artifactID string, artifact interface{}
 	var title string
 	switch layer {
 	case consts.Layer1:
-		if g, ok := artifact.(*layer1.GuidanceDocument); ok {
-			title = g.Metadata.Title
+		if g, ok := artifact.(*gemara.GuidanceDocument); ok {
+			title = g.Title
 		}
 	case consts.Layer2:
-		if c, ok := artifact.(*layer2.Catalog); ok {
-			title = c.Metadata.Title
+		if c, ok := artifact.(*gemara.Catalog); ok {
+			title = c.Title
 		}
 	case consts.Layer3:
-		if p, ok := artifact.(*layer3.PolicyDocument); ok {
-			title = p.Metadata.Title
+		if p, ok := artifact.(*gemara.Policy); ok {
+			title = p.Title
 		}
 	}
 
@@ -230,19 +228,19 @@ func (s *ArtifactStorage) Retrieve(layer int, artifactID string) (interface{}, e
 
 	switch layer {
 	case consts.Layer1:
-		guidance := &layer1.GuidanceDocument{}
+		guidance := &gemara.GuidanceDocument{}
 		if err := guidance.LoadFile(fileURI); err != nil {
 			return nil, fmt.Errorf("failed to load Layer 1 artifact: %w", err)
 		}
 		return guidance, nil
 	case consts.Layer2:
-		catalog := &layer2.Catalog{}
+		catalog := &gemara.Catalog{}
 		if err := catalog.LoadFile(fileURI); err != nil {
 			return nil, fmt.Errorf("failed to load Layer 2 artifact: %w", err)
 		}
 		return catalog, nil
 	case consts.Layer3:
-		policy := &layer3.PolicyDocument{}
+		policy := &gemara.Policy{}
 		if err := policy.LoadFile(fileURI); err != nil {
 			return nil, fmt.Errorf("failed to load Layer 3 artifact: %w", err)
 		}

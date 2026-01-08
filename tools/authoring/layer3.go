@@ -9,7 +9,7 @@ import (
 
 	"github.com/complytime/gemara-mcp-server/storage"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/ossf/gemara/layer3"
+	"github.com/ossf/gemara"
 )
 
 // handleListLayer3Policies lists all available Layer 3 Policy documents
@@ -33,7 +33,7 @@ func (g *GemaraAuthoringTools) handleListLayer3Policies(ctx context.Context, req
 			entries = append(entries, &storage.ArtifactIndexEntry{
 				ID:    policyID,
 				Layer: 3,
-				Title: policy.Metadata.Title,
+				Title: policy.Title,
 			})
 		}
 	}
@@ -47,12 +47,12 @@ func (g *GemaraAuthoringTools) handleListLayer3Policies(ctx context.Context, req
 		policiesJSON := make([]map[string]interface{}, len(entries))
 		for i, entry := range entries {
 			// Try to get full details
-			var policy *layer3.PolicyDocument
+			var policy *gemara.Policy
 			if p, exists := g.layer3Policies[entry.ID]; exists {
 				policy = p
 			} else if g.storage != nil {
 				if retrieved, err := g.storage.Retrieve(3, entry.ID); err == nil {
-					if p, ok := retrieved.(*layer3.PolicyDocument); ok {
+					if p, ok := retrieved.(*gemara.Policy); ok {
 						policy = p
 						g.layer3Policies[entry.ID] = policy
 					}
@@ -64,9 +64,6 @@ func (g *GemaraAuthoringTools) handleListLayer3Policies(ctx context.Context, req
 				"title":     entry.Title,
 			}
 			if policy != nil {
-				if policy.Metadata.Objective != "" {
-					policiesJSON[i]["objective"] = policy.Metadata.Objective
-				}
 				if policy.Metadata.Version != "" {
 					policiesJSON[i]["version"] = policy.Metadata.Version
 				}
@@ -84,12 +81,12 @@ func (g *GemaraAuthoringTools) handleListLayer3Policies(ctx context.Context, req
 
 	for _, entry := range entries {
 		// Try to get full details from cache or storage
-		var policy *layer3.PolicyDocument
+		var policy *gemara.Policy
 		if p, exists := g.layer3Policies[entry.ID]; exists {
 			policy = p
 		} else if g.storage != nil {
 			if retrieved, err := g.storage.Retrieve(3, entry.ID); err == nil {
-				if p, ok := retrieved.(*layer3.PolicyDocument); ok {
+				if p, ok := retrieved.(*gemara.Policy); ok {
 					policy = p
 					// Update cache
 					g.layer3Policies[entry.ID] = policy
@@ -100,9 +97,6 @@ func (g *GemaraAuthoringTools) handleListLayer3Policies(ctx context.Context, req
 		result += fmt.Sprintf("## %s\n", entry.Title)
 		result += fmt.Sprintf("- **ID**: `%s`\n", entry.ID)
 		if policy != nil {
-			if policy.Metadata.Objective != "" {
-				result += fmt.Sprintf("- **Objective**: %s\n", policy.Metadata.Objective)
-			}
 			if policy.Metadata.Version != "" {
 				result += fmt.Sprintf("- **Version**: %s\n", policy.Metadata.Version)
 			}
@@ -129,7 +123,7 @@ func (g *GemaraAuthoringTools) handleGetLayer3Policy(ctx context.Context, reques
 		// Try to retrieve from storage
 		if g.storage != nil {
 			if retrieved, err := g.storage.Retrieve(3, policyID); err == nil {
-				if p, ok := retrieved.(*layer3.PolicyDocument); ok {
+				if p, ok := retrieved.(*gemara.Policy); ok {
 					policy = p
 					// Update in-memory cache
 					g.layer3Policies[policyID] = policy
@@ -169,23 +163,23 @@ func (g *GemaraAuthoringTools) handleSearchLayer3Policies(ctx context.Context, r
 			entries = append(entries, &storage.ArtifactIndexEntry{
 				ID:    policyID,
 				Layer: 3,
-				Title: policy.Metadata.Title,
+				Title: policy.Title,
 			})
 		}
 	}
 
 	// Search through entries
-	var matches []*layer3.PolicyDocument
+	var matches []*gemara.Policy
 	searchLower := strings.ToLower(searchTerm)
 
 	for _, entry := range entries {
 		// Get full policy document
-		var policy *layer3.PolicyDocument
+		var policy *gemara.Policy
 		if p, exists := g.layer3Policies[entry.ID]; exists {
 			policy = p
 		} else if g.storage != nil {
 			if retrieved, err := g.storage.Retrieve(3, entry.ID); err == nil {
-				if p, ok := retrieved.(*layer3.PolicyDocument); ok {
+				if p, ok := retrieved.(*gemara.Policy); ok {
 					policy = p
 					// Update cache
 					g.layer3Policies[entry.ID] = policy
@@ -197,12 +191,11 @@ func (g *GemaraAuthoringTools) handleSearchLayer3Policies(ctx context.Context, r
 			continue
 		}
 
-		// Search in title, objective, and other metadata
-		titleMatch := strings.Contains(strings.ToLower(policy.Metadata.Title), searchLower)
-		objectiveMatch := strings.Contains(strings.ToLower(policy.Metadata.Objective), searchLower)
+		// Search in title and other metadata
+		titleMatch := strings.Contains(strings.ToLower(policy.Title), searchLower)
 		idMatch := strings.Contains(strings.ToLower(policy.Metadata.Id), searchLower)
 
-		if titleMatch || objectiveMatch || idMatch {
+		if titleMatch || idMatch {
 			matches = append(matches, policy)
 		}
 	}
@@ -224,12 +217,9 @@ func (g *GemaraAuthoringTools) handleSearchLayer3Policies(ctx context.Context, r
 	result := fmt.Sprintf("# Search Results for '%s'\n\n", searchTerm)
 	result += fmt.Sprintf("Found %d matching policy document(s):\n\n", len(matches))
 
-	for _, policy := range matches {
-		result += fmt.Sprintf("## %s\n", policy.Metadata.Title)
+		for _, policy := range matches {
+		result += fmt.Sprintf("## %s\n", policy.Title)
 		result += fmt.Sprintf("- **ID**: `%s`\n", policy.Metadata.Id)
-		if policy.Metadata.Objective != "" {
-			result += fmt.Sprintf("- **Objective**: %s\n", policy.Metadata.Objective)
-		}
 		if policy.Metadata.Version != "" {
 			result += fmt.Sprintf("- **Version**: %s\n", policy.Metadata.Version)
 		}
@@ -257,7 +247,7 @@ func (g *GemaraAuthoringTools) handleStoreLayer3YAML(ctx context.Context, reques
 
 	// Load into memory cache for immediate querying
 	if retrieved, err := g.storage.Retrieve(3, storedID); err == nil {
-		if policy, ok := retrieved.(*layer3.PolicyDocument); ok {
+		if policy, ok := retrieved.(*gemara.Policy); ok {
 			g.layer3Policies[storedID] = policy
 		}
 	}

@@ -8,8 +8,7 @@ import (
 
 	"github.com/complytime/gemara-mcp-server/storage"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/ossf/gemara/layer1"
-	"github.com/ossf/gemara/layer2"
+	"github.com/ossf/gemara"
 )
 
 // handleListLayer2Controls lists available Layer 2 Controls with optional filtering
@@ -36,7 +35,7 @@ func (g *GemaraAuthoringTools) handleListLayer2Controls(ctx context.Context, req
 			catalogEntries = append(catalogEntries, &storage.ArtifactIndexEntry{
 				ID:    catalogID,
 				Layer: 2,
-				Title: catalog.Metadata.Title,
+				Title: catalog.Title,
 			})
 		}
 	}
@@ -49,18 +48,18 @@ func (g *GemaraAuthoringTools) handleListLayer2Controls(ctx context.Context, req
 	type controlInfo struct {
 		catalogID string
 		familyID  string
-		control   layer2.Control
+		control   gemara.Control
 	}
 	var allControls []controlInfo
 
 	for _, catalogEntry := range catalogEntries {
 		// Get catalog from cache or storage
-		var catalog *layer2.Catalog
+		var catalog *gemara.Catalog
 		if c, exists := g.layer2Catalogs[catalogEntry.ID]; exists {
 			catalog = c
 		} else if g.storage != nil {
 			if retrieved, err := g.storage.Retrieve(2, catalogEntry.ID); err == nil {
-				if c, ok := retrieved.(*layer2.Catalog); ok {
+				if c, ok := retrieved.(*gemara.Catalog); ok {
 					catalog = c
 					g.layer2Catalogs[catalogEntry.ID] = catalog
 				}
@@ -71,27 +70,26 @@ func (g *GemaraAuthoringTools) handleListLayer2Controls(ctx context.Context, req
 			continue
 		}
 
-		for _, family := range catalog.ControlFamilies {
-			for _, control := range family.Controls {
-				// Filter by layer1_reference if specified
-				if layer1Ref != "" {
-					found := false
-					for _, mapping := range control.GuidelineMappings {
-						if mapping.ReferenceId == layer1Ref {
-							found = true
-							break
-						}
-					}
-					if !found {
-						continue
+		// Controls are now at catalog level, not nested in families
+		for _, control := range catalog.Controls {
+			// Filter by layer1_reference if specified
+			if layer1Ref != "" {
+				found := false
+				for _, mapping := range control.GuidelineMappings {
+					if mapping.ReferenceId == layer1Ref {
+						found = true
+						break
 					}
 				}
-				allControls = append(allControls, controlInfo{
-					catalogID: catalogEntry.ID,
-					familyID:  family.Id,
-					control:   control,
-				})
+				if !found {
+					continue
+				}
 			}
+			allControls = append(allControls, controlInfo{
+				catalogID: catalogEntry.ID,
+				familyID:  control.Family,
+				control:   control,
+			})
 		}
 	}
 
@@ -137,7 +135,7 @@ func (g *GemaraAuthoringTools) handleListLayer2Controls(ctx context.Context, req
 
 		for catalogID, controls := range catalogMap {
 			catalog := g.layer2Catalogs[catalogID]
-			result += fmt.Sprintf("## Catalog: %s\n", catalog.Metadata.Title)
+			result += fmt.Sprintf("## Catalog: %s\n", catalog.Title)
 			result += fmt.Sprintf("- **Catalog ID**: `%s`\n", catalogID)
 			if catalog.Metadata.Description != "" {
 				result += fmt.Sprintf("- **Description**: %s\n", catalog.Metadata.Description)
@@ -179,19 +177,14 @@ func (g *GemaraAuthoringTools) handleGetLayer2Control(ctx context.Context, reque
 	}
 
 	// Search for control in all catalogs
-	var foundControl *layer2.Control
+	var foundControl *gemara.Control
 	var catalogID, familyID string
 	for catID, catalog := range g.layer2Catalogs {
-		for _, family := range catalog.ControlFamilies {
-			for i := range family.Controls {
-				if family.Controls[i].Id == controlID {
-					foundControl = &family.Controls[i]
-					catalogID = catID
-					familyID = family.Id
-					break
-				}
-			}
-			if foundControl != nil {
+		for i := range catalog.Controls {
+			if catalog.Controls[i].Id == controlID {
+				foundControl = &catalog.Controls[i]
+				catalogID = catID
+				familyID = catalog.Controls[i].Family
 				break
 			}
 		}
@@ -242,7 +235,7 @@ func (g *GemaraAuthoringTools) handleSearchLayer2Controls(ctx context.Context, r
 			catalogEntries = append(catalogEntries, &storage.ArtifactIndexEntry{
 				ID:    catalogID,
 				Layer: 2,
-				Title: catalog.Metadata.Title,
+				Title: catalog.Title,
 			})
 		}
 	}
@@ -250,18 +243,18 @@ func (g *GemaraAuthoringTools) handleSearchLayer2Controls(ctx context.Context, r
 	type controlMatch struct {
 		catalogID string
 		familyID  string
-		control   layer2.Control
+		control   gemara.Control
 	}
 	var matches []controlMatch
 
 	// Search through catalogs (load from cache or storage as needed)
 	for _, catalogEntry := range catalogEntries {
-		var catalog *layer2.Catalog
+		var catalog *gemara.Catalog
 		if c, exists := g.layer2Catalogs[catalogEntry.ID]; exists {
 			catalog = c
 		} else if g.storage != nil {
 			if retrieved, err := g.storage.Retrieve(2, catalogEntry.ID); err == nil {
-				if c, ok := retrieved.(*layer2.Catalog); ok {
+				if c, ok := retrieved.(*gemara.Catalog); ok {
 					catalog = c
 					g.layer2Catalogs[catalogEntry.ID] = catalog
 				}
@@ -272,55 +265,54 @@ func (g *GemaraAuthoringTools) handleSearchLayer2Controls(ctx context.Context, r
 			continue
 		}
 
-		for _, family := range catalog.ControlFamilies {
-			for _, control := range family.Controls {
-				// Filter by layer1_reference if specified
-				if layer1Ref != "" {
-					found := false
-					for _, mapping := range control.GuidelineMappings {
-						if mapping.ReferenceId == layer1Ref {
-							found = true
-							break
-						}
-					}
-					if !found {
-						continue
+		// Controls are now at catalog level, not nested in families
+		for _, control := range catalog.Controls {
+			// Filter by layer1_reference if specified
+			if layer1Ref != "" {
+				found := false
+				for _, mapping := range control.GuidelineMappings {
+					if mapping.ReferenceId == layer1Ref {
+						found = true
+						break
 					}
 				}
-
-				// Filter by technology if specified
-				if technology != "" {
-					// Check if control matches technology (simplified - could be enhanced)
-					// For now, we'll include all controls if technology filter is not precise
+				if !found {
+					continue
 				}
+			}
 
-				// Apply scoping filters if provided
-				if len(boundaries) > 0 || len(technologies) > 0 || len(providers) > 0 {
-					if !g.matchesLayer2Applicability(control, technologies, boundaries, providers) {
-						continue
-					}
+			// Filter by technology if specified
+			if technology != "" {
+				// Check if control matches technology (simplified - could be enhanced)
+				// For now, we'll include all controls if technology filter is not precise
+			}
+
+			// Apply scoping filters if provided
+			if len(boundaries) > 0 || len(technologies) > 0 || len(providers) > 0 {
+				if !g.matchesLayer2Applicability(control, technologies, boundaries, providers) {
+					continue
 				}
+			}
 
-				// Search in title, objective, and control ID
-				// If search_term is empty, include all controls that passed filters above
-				if searchTerm == "" {
+			// Search in title, objective, and control ID
+			// If search_term is empty, include all controls that passed filters above
+			if searchTerm == "" {
+				matches = append(matches, controlMatch{
+					catalogID: catalogEntry.ID,
+					familyID:  control.Family,
+					control:   control,
+				})
+			} else {
+				titleMatch := strings.Contains(strings.ToLower(control.Title), searchTermLower)
+				objectiveMatch := strings.Contains(strings.ToLower(control.Objective), searchTermLower)
+				idMatch := strings.Contains(strings.ToLower(control.Id), searchTermLower)
+
+				if titleMatch || objectiveMatch || idMatch {
 					matches = append(matches, controlMatch{
 						catalogID: catalogEntry.ID,
-						familyID:  family.Id,
+						familyID:  control.Family,
 						control:   control,
 					})
-				} else {
-					titleMatch := strings.Contains(strings.ToLower(control.Title), searchTermLower)
-					objectiveMatch := strings.Contains(strings.ToLower(control.Objective), searchTermLower)
-					idMatch := strings.Contains(strings.ToLower(control.Id), searchTermLower)
-
-					if titleMatch || objectiveMatch || idMatch {
-						matches = append(matches, controlMatch{
-							catalogID: catalogEntry.ID,
-							familyID:  family.Id,
-							control:   control,
-						})
-					}
 				}
 			}
 		}
@@ -434,7 +426,7 @@ func (g *GemaraAuthoringTools) handleStoreLayer2YAML(ctx context.Context, reques
 
 	// Load into memory cache for immediate querying
 	if retrieved, err := g.storage.Retrieve(2, storedID); err == nil {
-		if catalog, ok := retrieved.(*layer2.Catalog); ok {
+		if catalog, ok := retrieved.(*gemara.Catalog); ok {
 			g.layer2Catalogs[storedID] = catalog
 		}
 	}
@@ -460,21 +452,16 @@ func (g *GemaraAuthoringTools) handleGetLayer2GuidelineMappings(ctx context.Cont
 	}
 
 	// Find the control across all catalogs
-	var foundControl *layer2.Control
+	var foundControl *gemara.Control
 	var catalogID string
 	var familyID string
 
 	for catID, catalog := range g.layer2Catalogs {
-		for _, family := range catalog.ControlFamilies {
-			for _, control := range family.Controls {
-				if control.Id == controlID {
-					foundControl = &control
-					catalogID = catID
-					familyID = family.Id
-					break
-				}
-			}
-			if foundControl != nil {
+		for i := range catalog.Controls {
+			if catalog.Controls[i].Id == controlID {
+				foundControl = &catalog.Controls[i]
+				catalogID = catID
+				familyID = catalog.Controls[i].Family
 				break
 			}
 		}
@@ -520,7 +507,7 @@ func (g *GemaraAuthoringTools) handleGetLayer2GuidelineMappings(ctx context.Cont
 				// Optionally include Layer 1 guidance details
 				if includeGuidanceDetails {
 					if guidance, ok := g.layer1Guidance[mapping.ReferenceId]; ok {
-						entryData["guidance_title"] = guidance.Metadata.Title
+						entryData["guidance_title"] = guidance.Title
 						entryData["guidance_version"] = guidance.Metadata.Version
 					}
 				}
@@ -533,9 +520,9 @@ func (g *GemaraAuthoringTools) handleGetLayer2GuidelineMappings(ctx context.Cont
 				if guidance, ok := g.layer1Guidance[mapping.ReferenceId]; ok {
 					mappingData["guidance_document"] = map[string]interface{}{
 						"id":      mapping.ReferenceId,
-						"title":   guidance.Metadata.Title,
+						"title":   guidance.Title,
 						"version": guidance.Metadata.Version,
-						"author":  guidance.Metadata.Author,
+						"author":  guidance.Metadata.Author.Name,
 					}
 				}
 			}
@@ -568,12 +555,12 @@ func (g *GemaraAuthoringTools) handleGetLayer2GuidelineMappings(ctx context.Cont
 		result.WriteString(fmt.Sprintf("### %d. Guidance Document: `%s`\n\n", i+1, mapping.ReferenceId))
 
 		if guidanceDoc != nil {
-			result.WriteString(fmt.Sprintf("- **Title**: %s\n", guidanceDoc.Metadata.Title))
+			result.WriteString(fmt.Sprintf("- **Title**: %s\n", guidanceDoc.Title))
 			if guidanceDoc.Metadata.Version != "" {
 				result.WriteString(fmt.Sprintf("- **Version**: %s\n", guidanceDoc.Metadata.Version))
 			}
-			if guidanceDoc.Metadata.Author != "" {
-				result.WriteString(fmt.Sprintf("- **Author**: %s\n", guidanceDoc.Metadata.Author))
+			if guidanceDoc.Metadata.Author.Name != "" {
+				result.WriteString(fmt.Sprintf("- **Author**: %s\n", guidanceDoc.Metadata.Author.Name))
 			}
 		}
 
@@ -608,7 +595,7 @@ func (g *GemaraAuthoringTools) handleGetLayer2GuidelineMappings(ctx context.Cont
 }
 
 // countTotalGuidelineEntries counts the total number of guideline entries across all mappings
-func (g *GemaraAuthoringTools) countTotalGuidelineEntries(mappings []layer2.Mapping) int {
+func (g *GemaraAuthoringTools) countTotalGuidelineEntries(mappings []gemara.MultiMapping) int {
 	total := 0
 	for _, mapping := range mappings {
 		total += len(mapping.Entries)
@@ -617,7 +604,7 @@ func (g *GemaraAuthoringTools) countTotalGuidelineEntries(mappings []layer2.Mapp
 }
 
 // getGuidanceDocument retrieves a Layer 1 guidance document by ID
-func (g *GemaraAuthoringTools) getGuidanceDocument(guidanceID string) *layer1.GuidanceDocument {
+func (g *GemaraAuthoringTools) getGuidanceDocument(guidanceID string) *gemara.GuidanceDocument {
 	if guidance, ok := g.layer1Guidance[guidanceID]; ok {
 		return guidance
 	}

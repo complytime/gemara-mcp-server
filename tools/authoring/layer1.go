@@ -9,7 +9,7 @@ import (
 
 	"github.com/complytime/gemara-mcp-server/storage"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/ossf/gemara/layer1"
+	"github.com/ossf/gemara"
 )
 
 // handleListLayer1Guidance lists all available Layer 1 Guidance documents
@@ -31,7 +31,7 @@ func (g *GemaraAuthoringTools) handleListLayer1Guidance(_ context.Context, _ mcp
 			entries = append(entries, &storage.ArtifactIndexEntry{
 				ID:    guidanceID,
 				Layer: 1,
-				Title: guidance.Metadata.Title,
+				Title: guidance.Title,
 			})
 		}
 	}
@@ -46,12 +46,12 @@ func (g *GemaraAuthoringTools) handleListLayer1Guidance(_ context.Context, _ mcp
 
 	for _, entry := range entries {
 		// Try to get full details from cache or storage
-		var guidance *layer1.GuidanceDocument
+		var guidance *gemara.GuidanceDocument
 		if gd, exists := g.layer1Guidance[entry.ID]; exists {
 			guidance = gd
 		} else if g.storage != nil {
 			if retrieved, err := g.storage.Retrieve(1, entry.ID); err == nil {
-				if gd, ok := retrieved.(*layer1.GuidanceDocument); ok {
+				if gd, ok := retrieved.(*gemara.GuidanceDocument); ok {
 					guidance = gd
 					// Update cache
 					g.layer1Guidance[entry.ID] = guidance
@@ -65,8 +65,8 @@ func (g *GemaraAuthoringTools) handleListLayer1Guidance(_ context.Context, _ mcp
 			if guidance.Metadata.Description != "" {
 				result += fmt.Sprintf("- **Description**: %s\n", guidance.Metadata.Description)
 			}
-			if guidance.Metadata.Author != "" {
-				result += fmt.Sprintf("- **Author**: %s\n", guidance.Metadata.Author)
+			if guidance.Metadata.Author.Name != "" {
+				result += fmt.Sprintf("- **Author**: %s\n", guidance.Metadata.Author.Name)
 			}
 			if guidance.Metadata.Version != "" {
 				result += fmt.Sprintf("- **Version**: %s\n", guidance.Metadata.Version)
@@ -95,7 +95,7 @@ func (g *GemaraAuthoringTools) handleGetLayer1Guidance(_ context.Context, reques
 		// Try to retrieve from storage
 		if g.storage != nil {
 			if retrieved, err := g.storage.Retrieve(1, guidanceID); err == nil {
-				if gd, ok := retrieved.(*layer1.GuidanceDocument); ok {
+				if gd, ok := retrieved.(*gemara.GuidanceDocument); ok {
 					guidance = gd
 					// Update in-memory cache
 					g.layer1Guidance[guidanceID] = guidance
@@ -133,7 +133,7 @@ func (g *GemaraAuthoringTools) handleStoreLayer1YAML(_ context.Context, request 
 
 	// Load into memory cache for immediate querying
 	if retrieved, err := g.storage.Retrieve(1, storedID); err == nil {
-		if guidance, ok := retrieved.(*layer1.GuidanceDocument); ok {
+		if guidance, ok := retrieved.(*gemara.GuidanceDocument); ok {
 			g.layer1Guidance[storedID] = guidance
 		}
 	}
@@ -172,7 +172,7 @@ func (g *GemaraAuthoringTools) handleSearchLayer1Guidance(_ context.Context, req
 			entries = append(entries, &storage.ArtifactIndexEntry{
 				ID:    guidanceID,
 				Layer: 1,
-				Title: guidance.Metadata.Title,
+				Title: guidance.Title,
 			})
 		}
 	}
@@ -195,15 +195,15 @@ func (g *GemaraAuthoringTools) handleSearchLayer1Guidance(_ context.Context, req
 	}
 
 	// Second pass: load full documents only for candidates and check description/author
-	var matches []*layer1.GuidanceDocument
+	var matches []*gemara.GuidanceDocument
 	for _, entry := range candidateEntries {
 		// Get full guidance document (from cache or storage)
-		var guidance *layer1.GuidanceDocument
+		var guidance *gemara.GuidanceDocument
 		if gd, exists := g.layer1Guidance[entry.ID]; exists {
 			guidance = gd
 		} else if g.storage != nil {
 			if retrieved, err := g.storage.Retrieve(1, entry.ID); err == nil {
-				if gd, ok := retrieved.(*layer1.GuidanceDocument); ok {
+				if gd, ok := retrieved.(*gemara.GuidanceDocument); ok {
 					guidance = gd
 					// Update cache
 					g.layer1Guidance[entry.ID] = guidance
@@ -235,12 +235,12 @@ func (g *GemaraAuthoringTools) handleSearchLayer1Guidance(_ context.Context, req
 	// If no matches from index, and we have a search term, do a full search (slower but more thorough)
 	if len(matches) == 0 && searchTerm != "" {
 		for _, entry := range entries {
-			var guidance *layer1.GuidanceDocument
+			var guidance *gemara.GuidanceDocument
 			if gd, exists := g.layer1Guidance[entry.ID]; exists {
 				guidance = gd
 			} else if g.storage != nil {
 				if retrieved, err := g.storage.Retrieve(1, entry.ID); err == nil {
-					if gd, ok := retrieved.(*layer1.GuidanceDocument); ok {
+					if gd, ok := retrieved.(*gemara.GuidanceDocument); ok {
 						guidance = gd
 						g.layer1Guidance[entry.ID] = guidance
 					}
@@ -252,9 +252,9 @@ func (g *GemaraAuthoringTools) handleSearchLayer1Guidance(_ context.Context, req
 			}
 
 			// Full text search
-			titleMatch := strings.Contains(strings.ToLower(guidance.Metadata.Title), searchLower)
+			titleMatch := strings.Contains(strings.ToLower(guidance.Title), searchLower)
 			descMatch := strings.Contains(strings.ToLower(guidance.Metadata.Description), searchLower)
-			authorMatch := strings.Contains(strings.ToLower(guidance.Metadata.Author), searchLower)
+			authorMatch := strings.Contains(strings.ToLower(guidance.Metadata.Author.Name), searchLower)
 
 			if titleMatch || descMatch || authorMatch {
 				// Apply scoping filters if provided
@@ -318,13 +318,13 @@ func (g *GemaraAuthoringTools) handleSearchLayer1Guidance(_ context.Context, req
 	result += "\n\n"
 
 	for _, guidance := range matches {
-		result += fmt.Sprintf("## %s\n", guidance.Metadata.Title)
+		result += fmt.Sprintf("## %s\n", guidance.Title)
 		result += fmt.Sprintf("- **ID**: `%s`\n", guidance.Metadata.Id)
 		if guidance.Metadata.Description != "" {
 			result += fmt.Sprintf("- **Description**: %s\n", guidance.Metadata.Description)
 		}
-		if guidance.Metadata.Author != "" {
-			result += fmt.Sprintf("- **Author**: %s\n", guidance.Metadata.Author)
+		if guidance.Metadata.Author.Name != "" {
+			result += fmt.Sprintf("- **Author**: %s\n", guidance.Metadata.Author.Name)
 		}
 		result += "\n"
 	}

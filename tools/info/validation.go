@@ -153,7 +153,7 @@ func (g *GemaraInfoTools) PerformCUEValidation(yamlContent string, layer int) Va
 	case consts.Layer2:
 		entryPoint = schema.LookupPath(cue.ParsePath("#Catalog"))
 	case consts.Layer3:
-		entryPoint = schema.LookupPath(cue.ParsePath("#PolicyDocument"))
+		entryPoint = schema.LookupPath(cue.ParsePath("#Policy"))
 	case consts.Layer4:
 		entryPoint = schema.LookupPath(cue.ParsePath("#EvaluationLog"))
 	}
