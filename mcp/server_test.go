@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/complytime/gemara-mcp-server/tools/prompts"
+	"github.com/complytime-labs/gemara-mcp-server/tools/prompts"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 

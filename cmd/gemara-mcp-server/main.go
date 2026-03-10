@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/complytime/gemara-mcp-server/mcp"
+	"github.com/complytime-labs/gemara-mcp-server/mcp"
 	"github.com/spf13/cobra"
 
-	"github.com/complytime/gemara-mcp-server/version"
+	"github.com/complytime-labs/gemara-mcp-server/version"
 )
 
 var (

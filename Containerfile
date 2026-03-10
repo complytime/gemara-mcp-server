@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=bind,target=. \
-    CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/complytime/gemara-mcp-server/version.Version=${VERSION} -X github.com/complytime/gemara-mcp-server/version.Build=$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')" \
+    CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/complytime-labs/gemara-mcp-server/version.Version=${VERSION} -X github.com/complytime-labs/gemara-mcp-server/version.Build=$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')" \
     -o /bin/gemara-mcp-server cmd/gemara-mcp-server/main.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest

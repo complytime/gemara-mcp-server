@@ -3,7 +3,7 @@ package authoring
 import (
 	"context"
 
-	"github.com/complytime/gemara-mcp-server/tools/prompts"
+	"github.com/complytime-labs/gemara-mcp-server/tools/prompts"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )

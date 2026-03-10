@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/complytime/gemara-mcp-server/internal/consts"
+	"github.com/complytime-labs/gemara-mcp-server/internal/consts"
 	"github.com/goccy/go-yaml"
 	"github.com/ossf/gemara"
 )

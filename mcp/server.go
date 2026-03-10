@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/complytime/gemara-mcp-server/tools/authoring"
-	"github.com/complytime/gemara-mcp-server/tools/info"
-	"github.com/complytime/gemara-mcp-server/tools/prompts"
+	"github.com/complytime-labs/gemara-mcp-server/tools/authoring"
+	"github.com/complytime-labs/gemara-mcp-server/tools/info"
+	"github.com/complytime-labs/gemara-mcp-server/tools/prompts"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )

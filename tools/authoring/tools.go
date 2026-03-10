@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/complytime/gemara-mcp-server/storage"
-	"github.com/complytime/gemara-mcp-server/tools/info"
+	"github.com/complytime-labs/gemara-mcp-server/storage"
+	"github.com/complytime-labs/gemara-mcp-server/tools/info"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/ossf/gemara"
 )

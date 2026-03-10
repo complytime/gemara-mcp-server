@@ -9,7 +9,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/load"
 	"cuelang.org/go/encoding/yaml"
-	"github.com/complytime/gemara-mcp-server/internal/consts"
+	"github.com/complytime-labs/gemara-mcp-server/internal/consts"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 

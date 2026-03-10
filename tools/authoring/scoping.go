@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/complytime/gemara-mcp-server/internal/consts"
-	"github.com/complytime/gemara-mcp-server/storage"
+	"github.com/complytime-labs/gemara-mcp-server/internal/consts"
+	"github.com/complytime-labs/gemara-mcp-server/storage"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/ossf/gemara"
 )

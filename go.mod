@@ -1,4 +1,4 @@
-module github.com/complytime/gemara-mcp-server
+module github.com/complytime-labs/gemara-mcp-server
 
 go 1.24.0
 
